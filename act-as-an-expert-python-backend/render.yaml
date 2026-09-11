@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: social-sync-sih
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
