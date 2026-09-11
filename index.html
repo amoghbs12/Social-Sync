@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Sync — Digital Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'], display: ['Manrope', 'Inter', 'sans-serif'] }, boxShadow: { neon: '0 0 36px rgba(139,92,246,.3)' } } } }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    html { background:#020617; } body { min-height:100vh; background:#020617; color:#e2e8f0; }
+    .mesh { background-image: radial-gradient(circle at 15% 15%, rgba(79,70,229,.22), transparent 28%), radial-gradient(circle at 85% 20%, rgba(168,85,247,.17), transparent 25%), radial-gradient(circle at 55% 85%, rgba(14,165,233,.10), transparent 30%); }
+    .glass { background:rgba(15,23,42,.58); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(18px); box-shadow:inset 0 1px rgba(255,255,255,.035); }
+    .glow-border { position:relative; overflow:hidden; }
+    .glow-border::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; background:linear-gradient(135deg,rgba(129,140,248,.65),transparent 43%,rgba(192,132,252,.4)); -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; pointer-events:none; }
+    .dot-grid { background-image:radial-gradient(rgba(255,255,255,.14) .7px,transparent .7px); background-size:20px 20px; }
+    .nav-item { transition:.2s ease; } .nav-item.active,.nav-item:hover { background:rgba(129,140,248,.16); color:#fff; border-color:rgba(129,140,248,.36); }
+    .view { display:none; animation:reveal .38s ease both; } .view.active { display:block; }
+    @keyframes reveal { from {opacity:0;transform:translateY(9px)} to {opacity:1;transform:translateY(0)} }
+    .entry-hide { opacity:0; transform:scale(1.015); pointer-events:none; }
+    .app-show { opacity:1!important; pointer-events:auto!important; }
+    .progress-fill { background:linear-gradient(90deg,#818cf8,#c084fc); }
+    canvas { max-height:300px; }
+
+    .security-pulse { animation: securityPulse 2.4s ease-in-out infinite; }
+    @keyframes securityPulse { 0%,100% { box-shadow:0 0 0 0 rgba(244,63,94,.0); } 50% { box-shadow:0 0 28px 0 rgba(244,63,94,.12); } }
+    .risk-track { background:rgba(255,255,255,.07); }
+    .risk-fill { background:linear-gradient(90deg,#f59e0b,#f43f5e); }
+    .hash-text { overflow-wrap:anywhere; word-break:break-word; }
+  </style>
+
+<style id="SIH_26152_THREAT_V2_CSS">
+  #aiThreatPrediction, #aiThreatRadar, #threatAppBars, #threatAppBars * { transition: all .25s ease; }
+</style>
+
+</head>
+<body class="mesh font-sans antialiased">
+  <!-- Entry state -->
+  <section id="entry" class="fixed inset-0 z-50 grid min-h-screen place-items-center overflow-y-auto bg-slate-950 px-5 py-10 transition duration-700 ease-out">
+    <div class="pointer-events-none absolute inset-0 dot-grid opacity-30"></div>
+    <div class="relative mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
+      <div class="text-center lg:text-left">
+        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-400/25 bg-indigo-400/10 px-4 py-2 text-xs font-semibold tracking-[.15em] text-indigo-200"><span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span> LIVE INTELLIGENCE LAYER</div>
+        <h1 class="font-display text-5xl font-extrabold tracking-tight text-white sm:text-7xl">Social <span class="bg-gradient-to-r from-indigo-300 via-violet-400 to-purple-400 bg-clip-text text-transparent">Sync</span></h1>
+        <p class="mt-6 font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">See what the world is <span class="italic text-cyan-300">talking about.</span></p>
+          <div class="mt-5 max-w-2xl rounded-2xl border border-cyan-400/15 bg-cyan-400/[.035] px-5 py-4 text-left">
+            <div class="flex items-start gap-3">
+              <i data-lucide="shield-check" class="mt-0.5 h-5 w-5 shrink-0 text-cyan-300"></i>
+              <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-cyan-200">Cybersecurity Intelligence</p>
+                <p class="mt-1 text-sm leading-6 text-slate-300">
+                  Detect emerging cyber threats hidden within social-media activity by analyzing suspicious patterns,
+                  coordinated accounts, phishing signals, malicious links, scams and abnormal conversations.
+                </p>
+                <p class="mt-2 text-xs leading-5 text-slate-500">
+                  Social Sync combines social-media analytics with threat intelligence to identify, assess and forecast
+                  potential risks across platforms, audiences and threat categories.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        <p class="mt-3 font-display text-2xl font-bold leading-tight text-slate-200 sm:text-3xl">One Rhythm. Every Platform.<br>Sync Your Digital Universe.</p>
+        <p class="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-400 lg:mx-0">SocialSight Engine analyses the digital conversation, tracks platform behavior, and forecasts what people will watch next—turning global signals into decisive strategy.</p>
+        <button id="startBtn" class="mt-9 inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-4 font-bold text-white shadow-neon transition hover:-translate-y-1 hover:shadow-[0_0_48px_rgba(139,92,246,.52)]">Get Started <i data-lucide="arrow-right" class="h-5 w-5"></i></button>
+      </div>
+      <div class="glass glow-border mx-auto w-full max-w-md rounded-3xl p-5 shadow-2xl">
+        <div class="mb-5 flex items-center justify-between"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-indigo-300">Signal canvas</p><p class="mt-1 text-lg font-bold text-white">Global Data Visualizations</p></div><div class="rounded-xl border border-violet-400/25 bg-violet-500/10 p-3 text-violet-300"><i data-lucide="orbit" class="h-6 w-6"></i></div></div>
+        <div class="relative h-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/65 p-5">
+          <div class="absolute inset-0 dot-grid opacity-25"></div><div class="absolute left-[18%] top-[20%] h-28 w-28 rounded-full border border-indigo-400/40 bg-indigo-400/10 shadow-[0_0_50px_rgba(99,102,241,.35)]"></div><div class="absolute right-[14%] top-[29%] h-16 w-16 rounded-full border border-purple-300/40 bg-purple-400/10"></div><div class="absolute bottom-[18%] left-[40%] h-20 w-20 rounded-full border border-cyan-300/35 bg-cyan-400/10"></div>
+          <svg class="absolute inset-0 h-full w-full" viewBox="0 0 400 270" fill="none"><path d="M95 90 C175 45 237 80 305 110 M95 90 C140 165 180 190 205 205 M305 110 C270 160 245 180 205 205" stroke="url(#g)" stroke-width="1.5" stroke-dasharray="5 7"/><defs><linearGradient id="g"><stop stop-color="#818cf8"/><stop offset="1" stop-color="#c084fc"/></linearGradient></defs></svg>
+          <div class="absolute bottom-5 left-5 rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-[10px] font-bold tracking-wider text-slate-300">GLOBAL SIGNAL MAP</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- App state -->
+  <main id="app" class="pointer-events-none min-h-screen opacity-0 transition duration-700 ease-out">
+    <div class="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
+      <aside class="glass z-10 w-full border-x-0 border-t-0 p-5 lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-b-0 lg:border-l-0">
+        <div class="flex items-center justify-between lg:block"><div class="flex items-center gap-3"><div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 font-display font-extrabold text-white">S</div><div><p class="font-display font-extrabold text-white">Social Sync</p><p class="text-[10px] font-bold tracking-widest text-indigo-300">INTELLIGENCE OS</p></div></div><span class="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-300 lg:hidden">LIVE</span></div>
+        <nav class="mt-6 flex gap-2 overflow-x-auto lg:flex-col" aria-label="Dashboard navigation"><button data-view="overview" class="nav-item active flex shrink-0 items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400"><i data-lucide="layout-dashboard" class="h-4 w-4"></i>Overview</button><button data-view="apps" class="nav-item flex shrink-0 items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400"><i data-lucide="app-window" class="h-4 w-4"></i>Individual Apps</button><button data-view="search" class="nav-item flex shrink-0 items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400"><i data-lucide="search" class="h-4 w-4"></i>Search Engines</button><button data-view="threats" class="nav-item flex shrink-0 items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-slate-400"><i data-lucide="shield-alert" class="h-4 w-4 text-rose-300"></i>Threat Analysis</button></nav>
+        <div class="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/[.035] p-4"><div><label for="application" class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400"><i data-lucide="layers-3" class="h-3.5 w-3.5 text-indigo-300"></i>Analytics scope</label><select id="application" class="mt-3 w-full cursor-pointer rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-200 outline-none focus:border-violet-400"><option value="global">Worldwide overview</option><option value="instagram">Instagram</option><option value="youtube">YouTube</option><option value="snapchat">Snapchat</option><option value="facebook">Facebook</option><option value="whatsapp">WhatsApp</option></select></div><div class="border-t border-white/10 pt-4"><label for="audience" class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400"><i data-lucide="sparkles" class="h-3.5 w-3.5 text-violet-300"></i>Target audience</label><select id="audience" class="mt-3 w-full cursor-pointer rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-200 outline-none focus:border-violet-400"></select></div></div>
+        <div class="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4 lg:block"><p class="text-xs font-bold text-indigo-200">Data freshness</p><p class="mt-1 text-sm text-slate-400">Synced moments ago</p><div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div class="h-full w-[88%] rounded-full bg-gradient-to-r from-indigo-400 to-violet-400"></div></div></div>
+      </aside>
+      <div class="flex-1 p-5 sm:p-8 lg:p-10">
+        <header class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-indigo-300">SocialSight Engine · live dashboard</p><h2 id="pageTitle" class="mt-2 font-display text-3xl font-extrabold tracking-tight text-white">Worldwide Intelligence</h2><p id="pageSubtitle" class="mt-2 text-sm text-slate-400">The global view of attention, conversations, and tomorrow's opportunities.</p></div><div class="flex flex-wrap items-center gap-2 self-start sm:self-auto"><span class="rounded-xl border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-200">SIH 26152 · Blockchain &amp; Cybersecurity</span><div class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300"><span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span><span id="liveStatus">Updated now</span></div></div></header>
+        <section class="mb-7 grid gap-3 sm:grid-cols-3"><div class="glass glow-border rounded-2xl p-4"><p class="text-xs font-bold uppercase tracking-wider text-slate-400">Posts &amp; views checked</p><p id="kpiPoints" class="mt-2 text-2xl font-extrabold text-white"></p></div><div class="glass rounded-2xl p-4"><p class="text-xs font-bold uppercase tracking-wider text-slate-400">People talking</p><p id="kpiSignals" class="mt-2 text-2xl font-extrabold text-white"></p></div><div class="glass rounded-2xl p-4"><p class="text-xs font-bold uppercase tracking-wider text-slate-400">Trend confidence</p><p id="kpiConfidence" class="mt-2 text-2xl font-extrabold text-white"></p></div></section>
+        <div id="overview" class="view active">
+          <div class="mb-7 rounded-2xl border border-indigo-400/25 bg-gradient-to-r from-indigo-500/15 via-violet-500/10 to-transparent p-5"><p class="text-xs font-bold uppercase tracking-[.16em] text-indigo-300">Social media today</p><p class="mt-1 font-display text-xl font-extrabold text-white sm:text-2xl">420 Billion Daily Conversations &amp; Interactions</p></div>
+          <section class="grid gap-5 xl:grid-cols-2"><div class="glass glow-border rounded-2xl p-5"><div class="mb-4 flex items-center justify-between"><div><h3 id="popularityTitle" class="font-bold text-white">Engagement Surface Mix</h3><p class="text-xs text-slate-400">App Market Share (Pie)</p></div><i data-lucide="pie-chart" class="text-violet-300"></i></div><canvas id="popularityChart"></canvas></div><div class="glass glow-border rounded-2xl p-5"><div class="mb-4 flex items-center justify-between"><div><h3 id="categoryTitle" class="font-bold text-white">Most Viewed Content Categories</h3><p class="text-xs text-slate-400">Category Engagement (Bar)</p></div><i data-lucide="bar-chart-3" class="text-indigo-300"></i></div><canvas id="categoryChart"></canvas></div></section>
+          <section class="mt-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]"><div class="glass glow-border rounded-2xl p-5"><div class="mb-4"><h3 id="compareTitle" class="font-bold text-white">Conversions &amp; Conversations</h3><p class="text-xs text-slate-400">Segment-qualified outcomes by engagement mode</p></div><canvas id="compareChart"></canvas></div><div class="glass rounded-2xl p-5"><h3 class="font-bold text-white">Quick-look insights</h3><div id="quickInsights" class="mt-4 space-y-3"></div></div></section>
+          <section class="mt-5 grid gap-5 xl:grid-cols-[.9fr_1.1fr]"><div class="glass rounded-2xl p-5"><h3 class="font-bold text-white">Trending Category Matrix</h3><p class="mt-1 text-xs text-slate-400">Most viewed &amp; browsed right now</p><div id="categoryBars" class="mt-5 space-y-4"></div></div><div class="glass glow-border rounded-2xl p-5"><div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h3 class="font-bold text-white">What might grow next?</h3><p class="mt-1 text-xs text-slate-400">Forecasts tailored to your growth model.</p></div><div class="rounded-xl border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-200"><span id="audienceLabel">Branding</span> playbook</div></div><div id="predictionTiles" class="mt-5 grid gap-3 sm:grid-cols-3"></div><div class="mt-5 border-t border-white/10 pt-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-300">Audience launch plan</p><p id="suggestionText" class="mt-2 text-sm leading-6 text-slate-300"></p><div id="audiencePlan" class="mt-3 grid gap-2 sm:grid-cols-3"></div></div></div></section>
+
+          <!-- SIH 26152: cybersecurity + blockchain layer added without changing the Social Sync outline -->
+          <section class="mt-5 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+            <div class="glass glow-border rounded-2xl p-5 security-pulse">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="shield-alert" class="h-5 w-5 text-rose-300"></i>
+                    <h3 class="font-bold text-white">Cybersecurity Intelligence Layer</h3>
+                  </div>
+                  <p class="mt-1 text-xs leading-5 text-slate-400">
+                    Analyze social signals for suspicious behavior, coordinated activity, phishing and scam indicators.
+                  </p>
+                </div>
+                <span class="rounded-full border border-rose-400/20 bg-rose-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300">
+                  Threat monitoring
+                </span>
+              </div>
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl border border-rose-400/15 bg-rose-400/[.05] p-3">
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">High-risk clusters</p>
+                  <p class="mt-2 text-2xl font-extrabold text-rose-300">27</p>
+                  <p class="mt-1 text-[10px] text-slate-500">Requires analyst review</p>
+                </div>
+                <div class="rounded-xl border border-orange-400/15 bg-orange-400/[.05] p-3">
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Phishing signals</p>
+                  <p class="mt-2 text-2xl font-extrabold text-orange-300">184</p>
+                  <p class="mt-1 text-[10px] text-slate-500">URL/content indicators</p>
+                </div>
+                <div class="rounded-xl border border-amber-400/15 bg-amber-400/[.05] p-3">
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bot coordination</p>
+                  <p class="mt-2 text-2xl font-extrabold text-amber-300">38</p>
+                  <p class="mt-1 text-[10px] text-slate-500">Linked account nodes</p>
+                </div>
+                <div class="rounded-xl border border-emerald-400/15 bg-emerald-400/[.05] p-3">
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Evidence integrity</p>
+                  <p class="mt-2 text-2xl font-extrabold text-emerald-300">96.8%</p>
+                  <p class="mt-1 text-[10px] text-slate-500">Hash verification</p>
+                </div>
+              </div>
+
+              <div class="mt-5 grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
+                <div class="rounded-xl border border-white/10 bg-white/[.025] p-4">
+                  <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Current threat score</p>
+                    <span class="text-xs font-bold text-rose-300">HIGH</span>
+                  </div>
+                  <div class="mt-4 flex items-end gap-3">
+                    <p class="text-4xl font-black text-white">82</p>
+                    <p class="pb-1 text-xs text-slate-500">/ 100 risk</p>
+                  </div>
+                  <div class="risk-track mt-4 h-2 overflow-hidden rounded-full">
+                    <div class="risk-fill h-full rounded-full" style="width:82%"></div>
+                  </div>
+                  <p class="mt-3 text-xs leading-5 text-slate-500">
+                    Elevated activity detected from coordinated posting, suspicious URLs and abnormal conversation velocity.
+                  </p>
+                </div>
+
+                <div class="rounded-xl border border-white/10 bg-white/[.025] p-4">
+                  <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Priority signals</p>
+                    <span class="text-[10px] text-slate-500">Explainable flags</span>
+                  </div>
+                  <div class="mt-3 space-y-2">
+                    <div class="flex items-center justify-between rounded-lg bg-white/[.035] px-3 py-2">
+                      <span class="text-xs text-slate-300">Coordinated account burst</span>
+                      <span class="text-[10px] font-bold text-rose-300">CRITICAL</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-white/[.035] px-3 py-2">
+                      <span class="text-xs text-slate-300">Repeated shortened URLs</span>
+                      <span class="text-[10px] font-bold text-orange-300">HIGH</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-white/[.035] px-3 py-2">
+                      <span class="text-xs text-slate-300">Sudden sentiment anomaly</span>
+                      <span class="text-[10px] font-bold text-amber-300">MEDIUM</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-white/[.035] px-3 py-2">
+                      <span class="text-xs text-slate-300">Cross-platform narrative match</span>
+                      <span class="text-[10px] font-bold text-violet-300">84%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass rounded-2xl p-5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="blocks" class="h-5 w-5 text-emerald-300"></i>
+                <h3 class="font-bold text-white">Blockchain Evidence Verification</h3>
+              </div>
+              <p class="mt-1 text-xs leading-5 text-slate-400">
+                Preserve the integrity of important social-media evidence by anchoring a cryptographic fingerprint to a permissioned ledger.
+              </p>
+
+              <div class="mt-5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.045] p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Verified evidence snapshot</span>
+                  <i data-lucide="badge-check" class="h-5 w-5 text-emerald-300"></i>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Evidence ID</p>
+                <p class="mt-1 font-mono text-xs text-slate-200">NTRO-SOC-26152-000184</p>
+                <p class="mt-3 text-xs text-slate-500">SHA-256 fingerprint</p>
+                <p class="hash-text mt-1 font-mono text-[10px] leading-5 text-emerald-200">
+                  8f3a9c71b4e0d6a9c0e5f1d8b7a2c42e7b19c6aa31f0e84d2f5b6a8c9e112c4
+                </p>
+              </div>
+
+              <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                <div class="rounded-lg border border-white/10 bg-white/[.035] p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500">1 · Collect</p>
+                  <p class="mt-1 text-xs text-slate-300">Source + timestamp</p>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/[.035] p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500">2 · Hash</p>
+                  <p class="mt-1 text-xs text-slate-300">Cryptographic proof</p>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/[.035] p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500">3 · Verify</p>
+                  <p class="mt-1 text-xs text-slate-300">Integrity check</p>
+                </div>
+              </div>
+
+              <div class="mt-4 rounded-lg border border-indigo-400/15 bg-indigo-400/[.04] px-3 py-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">SIH 26152 alignment</p>
+                <p class="mt-1 text-xs leading-5 text-slate-400">
+                  Social media analytics remains the core engine; cybersecurity detects risky patterns, while blockchain provides tamper-evident evidence integrity.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div class="mt-4 rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3">
+            <p class="text-[10px] leading-5 text-slate-500">
+              Prototype note: threat counts and blockchain identifiers shown here are demonstration values. Production deployment should use approved data sources, a secure backend, validated ML models and a permissioned blockchain/ledger.
+            </p>
+          </div>
+        </div>
+        <div id="threats" class="view">
+<div class="mb-7 rounded-2xl border border-rose-400/20 bg-gradient-to-r from-rose-500/10 via-purple-500/10 to-transparent p-5"><div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.16em] text-rose-300">Threat Intelligence · Social Sync</p><p class="mt-1 font-display text-xl font-extrabold text-white sm:text-2xl">Threat Analysis Dashboard</p><p class="mt-2 max-w-3xl text-xs leading-5 text-slate-400">Analyze social-media signals for malicious behavior, coordinated activity, phishing, scams and emerging narratives across platforms.</p></div><div class="flex flex-col gap-2 sm:flex-row"><select id="threatApp" class="rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none"><option value="all">All Apps</option><option value="instagram">Instagram</option><option value="youtube">YouTube</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram</option><option value="x">X</option><option value="discord">Discord</option></select><select id="threatCategory" class="rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none"><option value="all">All Threat Categories</option><option value="phishing">Phishing</option><option value="botnets">Botnets & Automation</option><option value="scams">Scams & Fraud</option><option value="disinformation">Disinformation</option><option value="malware">Malware Distribution</option><option value="radicalization">Radicalization</option></select><select id="threatAudience" class="rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none"><option value="all">All Audience Segments</option><option value="students">Students</option><option value="creators">Content Creators</option><option value="startups">Startups</option><option value="ecommerce">E-commerce</option><option value="localbusiness">Local Businesses</option><option value="nonprofits">Nonprofits</option><option value="agencies">Agencies</option></select></div></div></div>
+<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><article class="glass rounded-2xl p-5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overall Threats</p><p id="overallThreats" class="mt-3 text-3xl font-black text-white">2,847</p><p class="mt-2 text-xs text-rose-300">+18.6% vs previous snapshot</p></article><article class="glass rounded-2xl p-5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Critical Threats</p><p id="criticalThreats" class="mt-3 text-3xl font-black text-orange-300">184</p><p class="mt-2 text-xs text-slate-500">Priority analyst review</p></article><article class="glass rounded-2xl p-5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Coordinated Clusters</p><p id="coordinatedThreats" class="mt-3 text-3xl font-black text-violet-300">38</p><p class="mt-2 text-xs text-slate-500">Linked account/network nodes</p></article><article class="glass rounded-2xl p-5"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Evidence Verified</p><p class="mt-3 text-3xl font-black text-emerald-300">96.8%</p><p class="mt-2 text-xs text-slate-500">Blockchain/hash integrity</p></article></section>
+<section class="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]"><div class="glass glow-border rounded-2xl p-5"><div class="mb-4 flex items-center justify-between"><div><h3 class="font-bold text-white">Global Threat Matrix</h3><p class="text-xs text-slate-400">Threat intensity by selected category and audience</p></div><span id="threatFilterBadge" class="rounded-full bg-rose-400/10 px-3 py-1 text-[10px] font-bold text-rose-300">ALL SIGNALS</span></div><canvas id="threatMatrixChart"></canvas></div><div class="glass rounded-2xl p-5"><div class="flex items-center justify-between"><h3 class="font-bold text-white">Monitoring</h3><span class="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-300">LIVE</span></div><div class="mt-4 space-y-3"><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Peak Threat Time</p><p id="peakThreatTime" class="mt-1 text-sm font-semibold text-slate-200">7:00 – 10:00 PM</p></div><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Highest Active Threat</p><p id="highestThreat" class="mt-1 text-sm font-semibold text-rose-200">Phishing Campaigns</p></div><div class="rounded-xl border border-rose-400/15 bg-rose-400/[.05] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-rose-400">Escalating Vector</p><p id="escalatingVector" class="mt-1 text-sm font-semibold text-rose-200">Coordinated Bot Activity</p></div></div></div></section>
+<section class="mt-5 grid gap-5 xl:grid-cols-2"><div class="glass rounded-2xl p-5"><div class="mb-4 flex items-center justify-between"><div><h3 class="font-bold text-white">Threat Categories</h3><p class="text-xs text-slate-400">Choose a category to isolate its activity</p></div></div><div id="threatCategoryBars" class="space-y-4"></div></div><div class="glass rounded-2xl p-5"><div class="mb-4 flex items-center justify-between"><div><h3 class="font-bold text-white">Threats by Audience</h3><p class="text-xs text-slate-400">Audience-specific exposure and risk</p></div></div><div id="threatAudienceBars" class="space-y-4"></div></div></section>
+<section class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]"><div class="glass rounded-2xl p-5"><div class="flex items-center justify-between"><div><h3 class="font-bold text-white">Priority Threat Intelligence</h3><p class="text-xs text-slate-400">Highest-priority social signals for analyst review</p></div><span class="rounded-full border border-rose-400/20 bg-rose-400/10 px-3 py-1 text-[10px] font-bold text-rose-300">NTRO VIEW</span></div><div id="threatFeed" class="mt-4 divide-y divide-white/10"></div></div><div class="glass rounded-2xl p-5"><div class="flex items-center gap-2"><i data-lucide="blocks" class="h-5 w-5 text-emerald-300"></i><h3 class="font-bold text-white">Blockchain Validation Protocol</h3></div><p class="mt-1 text-xs leading-5 text-slate-400">Preserve the integrity of important social-media evidence with a cryptographic fingerprint and permissioned ledger.</p><div class="mt-4 rounded-xl border border-emerald-400/15 bg-emerald-400/[.05] p-4"><p class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Verified evidence</p><p class="mt-2 font-mono text-xs text-slate-200">NTRO-SOC-26152-000184</p><p class="mt-3 text-[10px] uppercase tracking-wider text-slate-500">SHA-256 fingerprint</p><p class="mt-1 break-all font-mono text-[10px] leading-5 text-emerald-200">8f3a9c71b4e0d6a9c0e5f1d8b7a2c42e7b19c6aa31f0e84d2f5b6a8c9e112c4</p><div class="mt-4 flex items-center gap-2 text-xs font-semibold text-emerald-300"><i data-lucide="badge-check" class="h-4 w-4"></i> Integrity checkpoint passed</div></div></div></section>
+
+<section class="mt-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+  <div id="aiThreatPrediction" class="glass glow-border rounded-2xl p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div class="flex items-center gap-2">
+          <i data-lucide="brain-circuit" class="h-5 w-5 text-violet-300"></i>
+          <div>
+            <h3 class="font-bold text-white">AI Intelligence · Upcoming Threat Prediction</h3>
+            <p class="mt-1 text-xs leading-5 text-slate-400">Forecast for the currently selected app, threat category and audience.</p>
+          </div>
+        </div>
+      </div>
+      <span id="aiForecastBadge" class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">AI FORECAST ACTIVE</span>
+    </div>
+
+    <div class="mt-5 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-rose-400/15 bg-rose-400/[.04] p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Predicted next threat</p>
+        <p id="aiPredictedThreat" class="mt-2 text-lg font-black text-rose-300">Phishing</p>
+        <p id="aiPredictionWindow" class="mt-1 text-xs text-slate-500">Next 24–48 hours</p>
+      </div>
+      <div class="rounded-xl border border-violet-400/15 bg-violet-400/[.04] p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Probability</p>
+        <p id="aiPredictionProbability" class="mt-2 text-2xl font-black text-violet-300">87%</p>
+        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5"><div id="aiProbabilityBar" class="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400" style="width:87%"></div></div>
+      </div>
+      <div class="rounded-xl border border-emerald-400/15 bg-emerald-400/[.04] p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Confidence</p>
+        <p id="aiPredictionConfidence" class="mt-2 text-lg font-black text-emerald-300">High</p>
+        <p id="aiPredictionTrend" class="mt-1 text-xs text-slate-500">Signal velocity rising</p>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-violet-400/15 bg-violet-400/[.035] p-4">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-xs font-bold text-violet-200">Model explanation</p>
+        <span id="aiGeneratedAt" class="text-[10px] text-slate-500">Generated on page load</span>
+      </div>
+      <p id="aiPredictionReason" class="mt-2 text-xs leading-5 text-slate-400">The forecast combines abnormal conversation velocity, suspicious-link frequency, coordinated account behaviour and topic/sentiment anomalies.</p>
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl p-5">
+    <div class="flex items-center gap-2">
+      <i data-lucide="radar" class="h-5 w-5 text-cyan-300"></i>
+      <div>
+        <h3 class="font-bold text-white">Threat Forecast Radar</h3>
+        <p class="mt-1 text-xs text-slate-500">Upcoming threat probability for the active filter combination.</p>
+      </div>
+    </div>
+    <div id="aiThreatRadar" class="mt-5 space-y-3"></div>
+  </div>
+</section>
+
+<!-- Additional threat-analysis segment 1 -->
+<section class="mt-5 grid gap-5 xl:grid-cols-2">
+  <div class="glass rounded-2xl p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-white">Threat Exposure by App</h3>
+        <p class="mt-1 text-xs text-slate-400">Compare threat intensity across social platforms for the selected category and audience.</p>
+      </div>
+      <span id="appExposureBadge" class="rounded-full bg-blue-400/10 px-3 py-1 text-[10px] font-bold text-blue-200">CROSS-PLATFORM</span>
+    </div>
+    <div id="threatAppBars" class="mt-5 space-y-4"></div>
+  </div>
+
+  <!-- Additional threat-analysis segment 2 -->
+  <div class="glass rounded-2xl p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-white">Threat Velocity & Escalation</h3>
+        <p class="mt-1 text-xs text-slate-400">How quickly the selected threat pattern is increasing.</p>
+      </div>
+      <span id="velocityBadge" class="rounded-full bg-rose-400/10 px-3 py-1 text-[10px] font-bold text-rose-200">LIVE TREND</span>
+    </div>
+    <div class="mt-5 grid grid-cols-2 gap-3">
+      <div class="rounded-xl border border-white/10 bg-white/[.025] p-4"><p class="text-[10px] uppercase tracking-wider text-slate-500">24h change</p><p id="velocity24h" class="mt-2 text-2xl font-black text-rose-300">+38%</p></div>
+      <div class="rounded-xl border border-white/10 bg-white/[.025] p-4"><p class="text-[10px] uppercase tracking-wider text-slate-500">Acceleration</p><p id="accelerationValue" class="mt-2 text-2xl font-black text-orange-300">1.7×</p></div>
+    </div>
+    <div class="mt-4 rounded-xl border border-white/10 bg-white/[.025] p-4">
+      <div class="flex items-center justify-between"><span class="text-xs text-slate-400">Escalation index</span><span id="escalationIndex" class="text-xs font-bold text-slate-200">76/100</span></div>
+      <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/5"><div id="escalationBar" class="h-full rounded-full bg-gradient-to-r from-amber-400 to-rose-500" style="width:76%"></div></div>
+      <p id="escalationDetail" class="mt-3 text-xs leading-5 text-slate-500">Increasing posting bursts and repeated indicators suggest rising threat velocity.</p>
+    </div>
+  </div>
+</section>
+
+<div class="mt-5 rounded-xl border border-cyan-400/15 bg-cyan-400/[.025] p-4">
+  <div class="flex items-center gap-2">
+    <i data-lucide="refresh-cw" class="h-4 w-4 text-cyan-300"></i>
+    <p class="text-xs font-bold text-cyan-200">Fresh intelligence snapshot</p>
+  </div>
+  <p id="threatSnapshotStatus" class="mt-1 text-xs leading-5 text-slate-500">A fresh demo snapshot is generated every time the website opens. Changing any filter recalculates the complete combination.</p>
+</div>
+
+<p class="mt-4 text-[10px] text-slate-600">Prototype values are synthetic demonstration data. Production should connect approved data sources, ML models and a permissioned blockchain/ledger.</p>
+</div>
+<div id="apps" class="view"><div class="mb-6 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-5"><h3 class="font-display text-xl font-extrabold text-white">Individual App Deep-Dives</h3><p class="mt-1 text-sm text-slate-400">Granular behavioral signals and a practical market-share playbook for every network.</p></div><div id="appCards" class="grid gap-5 xl:grid-cols-3"></div><div class="glass glow-border mt-5 rounded-2xl p-5"><h3 class="font-bold text-white">Predictive Trend Forecasting Engine</h3><p class="mt-1 text-xs text-slate-400">Projected category momentum across priority networks</p><canvas id="forecastChart" class="mt-4"></canvas></div></div>
+        <div id="search" class="view"><div class="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/[.06] p-5"><div class="flex items-start gap-4"><div class="rounded-2xl bg-cyan-400/10 p-3 text-cyan-300"><i data-lucide="search-code" class="h-7 w-7"></i></div><div><h3 class="font-display text-2xl font-extrabold text-white">Search engine overview</h3><p class="mt-1 max-w-2xl text-sm leading-6 text-slate-400">A simple comparison of where people search, what they search for, and which topics are growing.</p></div></div><div class="mt-5 grid gap-3 sm:grid-cols-3"><div class="rounded-xl border border-white/10 bg-white/5 p-4"><p class="text-xs text-slate-400">Most used search engine</p><p class="mt-2 font-bold text-white">Google</p></div><div class="rounded-xl border border-white/10 bg-white/5 p-4"><p class="text-xs text-slate-400">Fast-growing search</p><p class="mt-2 font-bold text-white">AI tools</p></div><div class="rounded-xl border border-white/10 bg-white/5 p-4"><p class="text-xs text-slate-400">Most visual search</p><p class="mt-2 font-bold text-emerald-300">YouTube Search</p></div></div></div><div class="grid gap-5 xl:grid-cols-2"><div class="glass glow-border rounded-2xl p-5"><h3 class="font-bold text-white">Search engine comparison</h3><p class="mt-1 text-xs text-slate-400">Monthly searches in millions</p><canvas id="searchEngineChart" class="mt-4"></canvas></div><div class="glass glow-border rounded-2xl p-5"><h3 class="font-bold text-white">Most searched categories</h3><p class="mt-1 text-xs text-slate-400">Searches in millions this month</p><canvas id="searchCategoryChart" class="mt-4"></canvas></div></div><div class="glass mt-5 rounded-2xl p-5"><div class="flex items-center justify-between"><div><h3 class="font-bold text-white">Where people are searching</h3><p class="mt-1 text-xs text-slate-400">Simple market view across major search engines</p></div><span class="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">Monthly data</span></div><div id="searchEngineRows" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5"></div></div></div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const audiences={branding:{label:'Branding',tiles:[['Community-led Brand Stories','+115%'],['Creator Collaborations','+78%'],['Behind-the-Brand Reels','+62%']],tip:'Lead with Instagram Reels and YouTube Shorts: distinctive story systems and trusted creator partnerships are earning the strongest brand recall.'},creator:{label:'Content Creator',tiles:[['AI Learning Content','+140%'],['Micro-Travel Diaries','+85%'],['Local Street Food Vlogs','+60%']],tip:'Own a repeatable short-form series on Instagram and YouTube. Pair searchable long-form explainers with high-frequency vertical clips.'},startups:{label:'Startups',tiles:[['Founder Build-in-Public','+106%'],['Workflow Explainers','+74%'],['Customer Proof Clips','+58%']],tip:'Prioritize LinkedIn for credibility and Instagram for reach. Convert product proof into native, snackable demonstrations.'},ecommerce:{label:'E-commerce',tiles:[['Shoppable How-Tos','+126%'],['UGC Product Tests','+82%'],['Live Deal Drops','+55%']],tip:'Use Instagram as the storefront and YouTube for intent-rich demonstrations. Make real customer proof the creative center.'}};
+    const platforms=[{name:'Instagram',icon:'instagram',color:'text-pink-300',time:'7:30 – 9:30 PM',top:'Fashion & Lifestyle',boom:'Social Commerce Reels',metric:'2.1x save-rate on carousels',advice:['Build a recognizable 3-second visual signature.','Mix product proof with creator-led Reels.','Use saves as the leading indicator of demand.']},{name:'YouTube',icon:'youtube',color:'text-red-300',time:'6:00 – 10:00 PM',top:'Tech & Gadgets',boom:'AI Learning Content',metric:'46% discovery via Shorts',advice:['Pair every Short with a searchable deep-dive.','Open with the problem before the product.','Package series around high-intent questions.']},{name:'LinkedIn',icon:'linkedin',color:'text-sky-300',time:'8:00 – 10:00 AM',top:'Business & Careers',boom:'Founder Build-in-Public',metric:'3.4x lift from expert POVs',advice:['Turn internal learnings into a weekly POV.','Use clear, experience-backed hooks.','Invite useful conversation, not empty engagement.']}];
+    let charts={}; const chartText='#94a3b8';
+    Chart.defaults.color=chartText; Chart.defaults.font.family='Inter';
+    function makeCharts(){Object.values(charts).forEach(c=>c.destroy());charts={}; const noGrid={grid:{display:false},border:{display:false},ticks:{color:chartText}};
+      charts.pop=new Chart(document.getElementById('popularityChart'),{type:'doughnut',data:{labels:['Instagram','YouTube','TikTok','Snapchat','Others'],datasets:[{data:[31,26,19,11,13],backgroundColor:['#f472b6','#818cf8','#c084fc','#22d3ee','#475569'],borderWidth:0,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:15}},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+'%'}}},cutout:'68%'}});
+      charts.cat=new Chart(document.getElementById('categoryChart'),{type:'bar',data:{labels:['Comedy','Tech','Fashion','Gaming','Food'],datasets:[{data:[82,75,69,61,54],backgroundColor:['#818cf8','#8b5cf6','#a78bfa','#c084fc','#e879f9'],borderRadius:8,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:noGrid,y:{...noGrid,display:false,beginAtZero:true}}}});
+      charts.comp=new Chart(document.getElementById('compareChart'),{type:'bar',data:{labels:['Instagram','YouTube','LinkedIn','Snapchat'],datasets:[{label:'Conversions',data:[81,72,77,41],backgroundColor:'#818cf8',borderRadius:7,borderSkipped:false},{label:'Conversations',data:[75,61,68,89],backgroundColor:'#c084fc',borderRadius:7,borderSkipped:false}]},options:{plugins:{legend:{labels:{boxWidth:10}}},scales:{x:noGrid,y:{...noGrid,ticks:{color:chartText,callback:v=>v+'%'}}}}});
+    }
+    function makeForecast(){if(charts.forecast)charts.forecast.destroy();charts.forecast=new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels:['Now','Week 1','Week 2','Week 3','Next Month'],datasets:[{label:'AI Learning',data:[38,44,54,68,82],borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.15)',fill:true,tension:.42,pointRadius:3},{label:'Micro-Travel',data:[30,35,39,48,57],borderColor:'#22d3ee',tension:.42,pointRadius:3},{label:'Creator Commerce',data:[25,29,37,42,51],borderColor:'#f472b6',tension:.42,pointRadius:3}]},options:{plugins:{legend:{labels:{boxWidth:10}}},scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{display:false}}}}});}
+    function updateAudience(){let a=audiences[document.getElementById('audience').value];document.getElementById('audienceLabel').textContent=a.label;document.getElementById('suggestionText').textContent=a.tip;document.getElementById('predictionTiles').innerHTML=a.tiles.map(t=>`<div class="rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] p-3"><span class="rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-bold text-emerald-300">${t[1]} surge expected</span><p class="mt-3 text-sm font-bold text-white">${t[0]}</p></div>`).join('')}
+    function renderStatic(){const cats=[['Comedy & Memes',88],['Tech & Gadgets',76],['Fashion & Lifestyle',70],['Gaming',63],['Food & Cooking',57]];document.getElementById('categoryBars').innerHTML=cats.map(([n,v])=>`<div><div class="mb-2 flex justify-between text-xs font-semibold"><span class="text-slate-300">${n}</span><span class="text-violet-300">${v}%</span></div><div class="h-2 overflow-hidden rounded-full bg-slate-800"><div class="progress-fill h-full rounded-full" style="width:${v}%"></div></div></div>`).join('');document.getElementById('appCards').innerHTML=platforms.map(p=>`<article class="glass glow-border flex flex-col rounded-2xl p-5 transition duration-300 hover:-translate-y-1"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="rounded-xl border border-white/10 bg-white/5 p-2.5 ${p.color}"><i data-lucide="${p.icon}" class="h-5 w-5"></i></div><h3 class="font-display text-lg font-extrabold text-white">${p.name}</h3></div><span class="rounded-full bg-indigo-400/10 px-2 py-1 text-[10px] font-bold text-indigo-200">DEEP-DIVE</span></div><div class="mt-5 space-y-3"><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Most used time</p><p class="mt-1 text-sm font-semibold text-slate-200">${p.time}</p></div><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current top category</p><p class="mt-1 text-sm font-semibold text-slate-200">${p.top}</p></div><div class="rounded-xl border border-emerald-400/15 bg-emerald-400/[.05] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Predicted booming category</p><p class="mt-1 text-sm font-semibold text-emerald-100">${p.boom}</p></div></div><p class="mt-4 text-xs text-indigo-200">${p.metric}</p><div class="mt-4 border-t border-white/10 pt-4"><p class="text-xs font-bold uppercase tracking-wider text-violet-300">Automated advice engine</p><ul class="mt-2 space-y-1.5 text-xs leading-5 text-slate-400">${p.advice.map(x=>`<li class="flex gap-2"><span class="text-violet-300">•</span>${x}</li>`).join('')}</ul></div></article>`).join('')}
+    document.getElementById('startBtn').addEventListener('click',()=>{document.getElementById('entry').classList.add('entry-hide');document.getElementById('app').classList.add('app-show');setTimeout(()=>document.getElementById('entry').style.display='none',720);});
+    document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(btn.dataset.view).classList.add('active');let copy={overview:['Worldwide Intelligence','The global view of attention, conversations, and tomorrow\'s opportunities.'],apps:['Individual App Deep-Dives','Platform-specific behavior, growth frameworks, and advice that ships.'],search:['Search Engine Intelligence','Understand the intent driving social discovery.'],threats:['Threat Analysis','Cybersecurity intelligence derived from social-media signals, audience patterns, and coordinated activity.']}[btn.dataset.view];document.getElementById('pageTitle').textContent=copy[0];document.getElementById('pageSubtitle').textContent=copy[1];}));
+    // Context controls are owned by the synchronized state module below.
+    // A fresh load always starts in the dedicated welcome state; no view state is persisted.
+    window.addEventListener('pageshow',()=>{document.getElementById('entry').style.display='grid';document.getElementById('entry').classList.remove('entry-hide');document.getElementById('app').classList.remove('app-show');});
+    lucide.createIcons();
+  </script>
+  <script>
+    /**
+     * Social Sync context store. The two public state axes are intentionally
+     * independent: a platform selection never silently changes a valid segment,
+     * while an incompatible segment is replaced with that app's first supported one.
+     * @typedef {'global'|'instagram'|'youtube'|'snapchat'|'facebook'|'whatsapp'} ApplicationId
+     * @typedef {'all'|'branding'|'creator'|'startups'|'ecommerce'|'students'|'localbusiness'|'agencies'|'nonprofits'} AudienceId
+     * @typedef {{activeApplication: ApplicationId, targetAudienceSegment: AudienceId, version: number, fetchVector: object|null}} DashboardState
+     */
+    const CONTEXTS = {
+      instagram: {
+        label:'Instagram', icon:'instagram', color:'text-pink-300', time:'7:30 – 9:30 PM', top:'Fashion & Lifestyle', boom:'Social Commerce Reels', metric:'2.1× save-rate on audience-qualified carousels',
+        surfaces:['Reels','Stories','Feed','DMs','Live'], baseSurface:[42,21,17,13,7], categories:['Fashion','Beauty','Food','Travel','Comedy'], baseCategory:[84,72,66,58,51],
+        segments:{
+          branding:{label:'Branding', points:'4.8B+', signals:'84.2M', confidence:'96.1%', category:[89,68,63,55,49], conversion:[82,68,74,64], conversation:[61,74,69,71], tiles:[['Community-led brand stories','+115%'],['Creator collaborations','+78%'],['Behind-the-brand Reels','+62%']], suggestion:'Create a recognizable Reel narrative, then use Stories to turn brand affinity into two-way community signals.', advice:['Build a consistent three-second visual signature.','Use creator-led Reels to earn cultural credibility.','Treat saves and shares as the primary creative score.']},
+          creator:{label:'Content Creator', points:'5.2B+', signals:'91.4M', confidence:'95.4%', category:[62,71,58,64,88], conversion:[74,80,77,69], conversation:[71,86,73,78], tiles:[['Relatable creator series','+124%'],['Day-in-the-life Reels','+83%'],['Audience Q&A Stories','+59%']], suggestion:'Build a repeatable creator series around short, high-save formats and use Q&A Stories to source the next episode.', advice:['Publish a series, not one-off posts.','Hook a visual result in the first second.','Turn top comments into Reels responses.']},
+          ecommerce:{label:'E-commerce', points:'4.1B+', signals:'76.8M', confidence:'97.2%', category:[78,83,62,47,39], conversion:[91,75,86,72], conversation:[54,68,62,66], tiles:[['Shoppable how-tos','+126%'],['UGC product tests','+82%'],['Live deal drops','+55%']], suggestion:'Make Instagram the product-discovery surface: demonstrate use cases in Reels, then close intent with tagged products and DMs.', advice:['Lead with a real use case, not a product shot.','Reuse customer proof as conversion creative.','Reply to buying-intent comments within the hour.']}
+        }
+      },
+      youtube: {
+        label:'YouTube', icon:'youtube', color:'text-red-300', time:'6:00 – 10:00 PM', top:'Tech & Gadgets', boom:'AI Learning Content', metric:'46% of qualified discovery begins with Shorts',
+        surfaces:['Shorts','Long-form','Search','Comments','Live'], baseSurface:[34,31,22,8,5], categories:['Tech','Gaming','Education','Music','Food'], baseCategory:[81,76,73,64,54],
+        segments:{
+          creator:{label:'Content Creator', points:'6.1B+', signals:'108.6M', confidence:'95.9%', category:[71,84,79,63,56], conversion:[81,75,85,71], conversation:[58,70,73,61], tiles:[['AI learning content','+140%'],['Micro-travel diaries','+85%'],['Local food vlogs','+60%']], suggestion:'Use Shorts to earn discovery and route each winning topic into a searchable long-form series that compounds over time.', advice:['Match each Short to a search-ready deep dive.','Name the audience problem in the opening line.','Build thumbnails around one clear outcome.']},
+          branding:{label:'Branding', points:'5.4B+', signals:'97.3M', confidence:'94.8%', category:[82,58,71,54,49], conversion:[79,72,82,68], conversation:[49,57,61,52], tiles:[['Product myth-busting','+97%'],['Founder explainers','+72%'],['Purpose-led mini docs','+51%']], suggestion:'Build trust with useful explainers and evergreen search coverage; brand consideration rises when value arrives before the pitch.', advice:['Own a small group of high-intent questions.','Use a product demonstration before the brand promise.','Refresh top evergreen videos quarterly.']},
+          startups:{label:'Startups', points:'4.6B+', signals:'81.5M', confidence:'96.6%', category:[87,61,84,42,38], conversion:[86,66,88,74], conversation:[52,51,66,48], tiles:[['Workflow explainers','+112%'],['Founder build logs','+74%'],['Customer problem stories','+58%']], suggestion:'Turn complex product value into searchable workflows. The winning startup channel shows exactly how a customer gets from friction to result.', advice:['Create one video per high-intent workflow.','Use customer language in titles.','End with the next helpful step, not a hard sell.']}
+        }
+      }
+    };
+
+    // Additional application contexts add broader consumer/social surfaces.
+    const buildAppContext = (label, icon, color, time, top, boom, metric, surfaces, categories, baseSurface, baseCategory, segmentOverrides={}) => ({
+      label, icon, color, time, top, boom, metric, surfaces, categories, baseSurface, baseCategory,
+      segments:{...segmentOverrides}
+    });
+    CONTEXTS.snapchat = buildAppContext('Snapchat','ghost','text-yellow-200','8:00 – 11:00 PM','Comedy & Friend Stories','AR Shopping Lenses','63% of high-intent responses arrive through private story replies',['Stories','Spotlight','Chats','Lenses','Maps'],['Comedy','Beauty','Fashion','Food','Sports'],[32,26,24,12,6],[85,72,68,56,47],{
+      creator:{label:'Content Creator',points:'3.7B+',signals:'64.2M',confidence:'93.8%',category:[89,66,61,54,48],conversion:[69,66,81,72],conversation:[84,78,91,83],tiles:[['Friend-group comedy','+102%'],['Unfiltered daily stories','+71%'],['AR challenge formats','+49%']],suggestion:'Use Spotlight for discovery, then use Stories and Chat replies to create a close-friends feedback loop.',advice:['Make the first frame feel native and casual.','Use reply prompts to create conversation.','Ship AR concepts with a clear human payoff.']},
+      branding:{label:'Branding',points:'3.2B+',signals:'55.7M',confidence:'94.6%',category:[71,69,82,51,43],conversion:[76,68,79,70],conversation:[71,69,83,74],tiles:[['Playful AR product trials','+89%'],['Behind-the-scenes drops','+64%'],['Campus story takeovers','+45%']],suggestion:'Reach culture-minded audiences through native, playful creative—less polish and more participatory storytelling.',advice:['Make every Lens useful or instantly shareable.','Invite fans behind the product moment.','Use quick polls before launching a drop.']}
+    });
+    CONTEXTS.facebook = buildAppContext('Facebook','facebook','text-blue-300','6:30 – 9:00 PM','Local Communities','Community Commerce Groups','2.8× stronger conversion when advice comes from a trusted group',['Groups','Feed','Marketplace','Reels','Messenger'],['Local News','Food','Family','Health','Shopping'],[34,23,19,14,10],[80,68,65,59,57],{
+      localbusiness:{label:'Local Businesses',points:'4.3B+',signals:'77.6M',confidence:'96.4%',category:[77,84,59,67,88],conversion:[74,86,71,75],conversation:[85,79,82,77],tiles:[['Neighborhood deal groups','+93%'],['Local service explainers','+67%'],['Community event posts','+52%']],suggestion:'Use local Groups and Marketplace to earn trust before asking for a purchase; proximity and proof are your strongest assets.',advice:['Post useful local information before offers.','Answer every practical question in comments.','Promote customer recommendations, not claims.']},
+      ecommerce:{label:'E-commerce',points:'4.9B+',signals:'86.1M',confidence:'95.7%',category:[54,61,48,43,91],conversion:[68,83,77,72],conversation:[62,74,69,67],tiles:[['Marketplace bundles','+88%'],['Community product demos','+65%'],['Messenger restock alerts','+47%']],suggestion:'Pair Marketplace inventory with group-level product education, then make Messenger the fastest route from question to checkout.',advice:['Show total value in the first image.','Use group feedback to improve listings.','Offer an immediate Messenger answer path.']}
+    });
+    CONTEXTS.whatsapp = buildAppContext('WhatsApp','message-circle','text-emerald-300','7:00 – 10:00 PM','Private Chats & Groups','Opt-in Service Updates','71% of qualified actions follow an opt-in status update',['Groups','Channels','Status','Business Chat','Calls'],['Family','Local Updates','Education','Shopping','News'],[35,22,19,17,7],[83,72,68,61,56],{
+      localbusiness:{label:'Local Businesses',points:'5.7B+',signals:'104.3M',confidence:'97.5%',category:[57,71,52,89,48],conversion:[69,91,82,77],conversation:[88,93,85,79],tiles:[['Opt-in order updates','+108%'],['Neighborhood broadcast lists','+73%'],['Service-slot reminders','+54%']],suggestion:'Use WhatsApp as the trusted service layer: get explicit opt-in, give a practical update, and make the next action effortless.',advice:['Never message without permission.','Use status updates for lightweight discovery.','Keep business replies fast and human.']},
+      nonprofits:{label:'Nonprofits',points:'4.4B+',signals:'79.1M',confidence:'96.8%',category:[62,59,83,47,71],conversion:[72,74,85,78],conversation:[91,89,94,87],tiles:[['Volunteer action groups','+98%'],['Impact update channels','+70%'],['Community resource shares','+53%']],suggestion:'Build an opt-in action community where timely, concrete updates make it easy for supporters to help.',advice:['Share one clear action per message.','Celebrate contribution with impact proof.','Keep groups focused and moderated.']}
+    });
+    const EXTRA_SEGMENTS = {
+      students:{label:'Students & Learners',points:'3.8B+',signals:'68.5M',confidence:'95.2%',category:[58,52,91,54,45],conversion:[76,74,86,71],conversation:[79,81,84,76],tiles:[['Exam-ready micro lessons','+111%'],['Career starter guides','+76%'],['Study-with-me formats','+55%']],suggestion:'Teach one useful idea at a time and publish during after-school discovery windows; clear, reusable learning assets earn repeat attention.',advice:['Start with the problem learners already search.','Use concise visual steps and captions.','End with a small next lesson.']},
+      agencies:{label:'Agencies',points:'3.5B+',signals:'63.2M',confidence:'96.0%',category:[72,66,75,59,68],conversion:[83,78,81,75],conversation:[73,71,77,70],tiles:[['Vertical creative playbooks','+101%'],['Campaign teardown clips','+72%'],['Client result narratives','+50%']],suggestion:'Package strategic thinking as practical proof: targeted creative examples and measured outcomes turn visibility into qualified demand.',advice:['Speak to one client vertical at a time.','Show the decision behind the creative.','Publish results with enough context to trust.']},
+      nonprofits:{label:'Nonprofits',points:'2.7B+',signals:'48.6M',confidence:'95.5%',category:[61,58,77,49,73],conversion:[71,70,82,76],conversation:[86,84,90,85],tiles:[['Volunteer story series','+95%'],['Impact-in-60-seconds','+68%'],['Local action explainers','+46%']],suggestion:'Make impact tangible. A clear story, one action, and visible proof of progress are the strongest drivers of supporter participation.',advice:['Center the people affected, not the organization.','Ask for one simple action.','Report back on the result.']},
+      localbusiness:{label:'Local Businesses',points:'3.9B+',signals:'70.4M',confidence:'96.3%',category:[55,73,48,62,85],conversion:[72,88,78,74],conversation:[81,85,79,76],tiles:[['Neighborhood how-tos','+92%'],['Customer spotlight series','+65%'],['Limited local drops','+44%']],suggestion:'Win local trust before reach: demonstrate practical value, spotlight customers, and publish when your neighborhood is deciding where to go.',advice:['Use a clear local cue in every post.','Feature regulars and real outcomes.','Time offers around local intent windows.']}
+    };
+    const APP_VARIATION = {
+      Instagram:{points:'4.7B+',signals:'86.4M',offset:3}, YouTube:{points:'5.9B+',signals:'104.8M',offset:6},
+      Snapchat:{points:'3.6B+',signals:'65.7M',offset:-4}, Facebook:{points:'4.4B+',signals:'78.5M',offset:1}, WhatsApp:{points:'5.6B+',signals:'101.9M',offset:-2}
+    };
+    const SEGMENT_VARIATION = {students:-2,agencies:3,nonprofits:-4,localbusiness:2};
+    const SEGMENT_VOLUME_FACTOR = {students:.94,agencies:1.06,nonprofits:.81,localbusiness:.89};
+    const scaleMetric = (metric, factor) => {
+      const match = metric.match(/^(\d+(?:\.\d+)?)([BM])(\+?)$/);
+      return match ? `${(Number(match[1]) * factor).toFixed(match[1].includes('.') ? 1 : 0)}${match[2]}${match[3]}` : metric;
+    };
+    // Fill only unsupported segment/app pairs with platform-adjusted values, so every selectable pair has its own data.
+    Object.values(CONTEXTS).forEach(app => Object.entries(EXTRA_SEGMENTS).forEach(([id, data]) => {
+      if (app.segments[id]) return;
+      const platform = APP_VARIATION[app.label], shift = platform.offset + SEGMENT_VARIATION[id];
+      app.segments[id] = {
+        ...data, points:scaleMetric(platform.points, SEGMENT_VOLUME_FACTOR[id]), signals:scaleMetric(platform.signals, SEGMENT_VOLUME_FACTOR[id]),
+        category:data.category.map((value,index)=>Math.max(35,Math.min(96,value + (index % 2 ? -shift : shift)))),
+        conversion:data.conversion.map((value,index)=>Math.max(35,Math.min(96,value + (index % 2 ? shift : -shift)))),
+        conversation:data.conversation.map((value,index)=>Math.max(35,Math.min(96,value + (index % 2 ? -shift : shift)))),
+        tiles:data.tiles.map(([title,growth])=>[`${title} on ${app.label}`,growth]),
+        suggestion:data.suggestion.replace('publish', `publish on ${app.label}`)
+      };
+    }));
+    const GLOBAL_CONTEXT = buildAppContext('Worldwide Social Media','globe-2','text-indigo-200','Global peak windows: 7:00 – 10:00 PM','Comedy & Memes','AI Learning Content','420B daily conversations and interactions across the public social graph',['Instagram','YouTube','WhatsApp','Facebook','Snapchat'],['Comedy & Memes','Tech & Gadgets','Fashion & Lifestyle','Gaming','Food & Cooking'],[28,25,21,15,11],[88,76,70,63,57],{
+      branding:{label:'Branding',points:'18.4B+',signals:'420B',confidence:'96.4%',category:[75,72,86,58,51],conversion:[83,75,79,72],conversation:[70,73,68,71],tiles:[['Community-led brand stories','+115%'],['Creator collaborations','+78%'],['Behind-the-brand Reels','+62%']],suggestion:'Global signal: build distinctive brand stories on Instagram and YouTube, then use trusted creator participation to improve recall.',advice:['Best apps: Instagram + YouTube.','Best category: Fashion & lifestyle storytelling.','Start window: 6:30 – 9:30 PM local time.']},
+      creator:{label:'Content Creator',points:'18.4B+',signals:'420B',confidence:'95.8%',category:[87,69,61,66,55],conversion:[78,82,76,70],conversation:[74,83,72,77],tiles:[['AI learning content','+140%'],['Micro-travel diaries','+85%'],['Local street food vlogs','+60%']],suggestion:'Global signal: short-form discovery plus searchable video is the strongest creator compound—use Reels, Shorts, and a clear series format.',advice:['Best apps: YouTube + Instagram.','Best category: AI learning and practical explainers.','Start window: 6:00 – 10:00 PM local time.']},
+      startups:{label:'Startups',points:'18.4B+',signals:'420B',confidence:'96.7%',category:[67,81,55,49,62],conversion:[86,74,88,76],conversation:[63,59,71,60],tiles:[['Workflow explainers','+112%'],['Founder build logs','+74%'],['Customer proof clips','+58%']],suggestion:'Global signal: startups grow trust fastest by showing a customer problem, a repeatable workflow, and proof that the result is real.',advice:['Best apps: YouTube + Instagram.','Best category: Product workflow explainers.','Start window: weekday mornings and 7–9 PM.']},
+      ecommerce:{label:'E-commerce',points:'18.4B+',signals:'420B',confidence:'97.0%',category:[66,67,79,45,84],conversion:[90,77,87,74],conversation:[58,65,61,67],tiles:[['Shoppable how-tos','+126%'],['UGC product tests','+82%'],['Live deal drops','+55%']],suggestion:'Global signal: show a product in use before asking for a purchase. UGC proof and shoppable how-tos are dominating attention-to-action paths.',advice:['Best apps: Instagram + Facebook.','Best category: Product demos and real customer proof.','Start window: 7:00 – 10:00 PM local time.']},
+      students:EXTRA_SEGMENTS.students, localbusiness:EXTRA_SEGMENTS.localbusiness, agencies:EXTRA_SEGMENTS.agencies, nonprofits:EXTRA_SEGMENTS.nonprofits
+    });
+
+    /** @type {DashboardState} */
+    const dashboardState = {activeApplication:'global', targetAudienceSegment:'all', version:0, fetchVector:null};
+    const contextCharts = {};
+    const $ = id => document.getElementById(id);
+    const numberColors=['#818cf8','#a78bfa','#c084fc','#22d3ee','#f472b6'];
+    // Demo-live layer: a UTC time bucket produces the same small sample movement for every viewer.
+    // Replace `getLiveMultiplier` with a backend/WebSocket response to use verified shared data.
+    let liveMultiplier = 1;
+    const getLiveMultiplier = () => {
+      const minuteBucket = Math.floor(Date.now() / 60000);
+      return 0.96 + ((minuteBucket * 17) % 9) / 100;
+    };
+    const liveMetric = value => {
+      const match = String(value).match(/^(\d+(?:\.\d+)?)([BM]\+?)(.*)$/);
+      if (!match) return value;
+      const decimals = match[1].includes('.') ? 1 : 0;
+      return `${(Number(match[1]) * liveMultiplier).toFixed(decimals)}${match[2]}${match[3]}`;
+    };
+
+    /** Clears stale context first, derives one immutable vector, then renders every dependent surface. */
+    function transitionContext(patch) {
+      const appChanged = patch.activeApplication && patch.activeApplication !== dashboardState.activeApplication;
+      dashboardState.fetchVector = null; // lifecycle step 1: discard the prior app/segment vector; no data can bleed forward.
+      Object.assign(dashboardState, patch);
+      if (appChanged) refreshAudienceOptions();
+      const app = dashboardState.activeApplication === 'global' ? GLOBAL_CONTEXT : CONTEXTS[dashboardState.activeApplication];
+      if (dashboardState.targetAudienceSegment !== 'all' && !app.segments[dashboardState.targetAudienceSegment]) dashboardState.targetAudienceSegment = Object.keys(app.segments)[0];
+      const segment = dashboardState.targetAudienceSegment === 'all' ? buildAllSuggestionsSegment(app) : app.segments[dashboardState.targetAudienceSegment];
+      dashboardState.version += 1;
+      // lifecycle step 2: this vector is the only data source accepted by all renderers in this render pass.
+      dashboardState.fetchVector = Object.freeze({app, segment, version:dashboardState.version});
+      renderContext(dashboardState.fetchVector);
+    }
+
+    /** Rebuilds valid audience choices whenever an app has a different segment taxonomy. */
+    function refreshAudienceOptions() {
+      const select = $('audience'), app = dashboardState.activeApplication === 'global' ? GLOBAL_CONTEXT : CONTEXTS[dashboardState.activeApplication];
+      select.innerHTML = `<option value="all">All suggestions (overview)</option>` + Object.entries(app.segments).map(([id, value]) => `<option value="${id}">${value.label}</option>`).join('');
+      if (dashboardState.targetAudienceSegment !== 'all' && !app.segments[dashboardState.targetAudienceSegment]) dashboardState.targetAudienceSegment = Object.keys(app.segments)[0];
+      select.value = dashboardState.targetAudienceSegment;
+    }
+
+    /** Creates a lightweight roll-up, preserving every audience's top suggestion in one view. */
+    function buildAllSuggestionsSegment(app) {
+      const segments = Object.values(app.segments);
+      const average = key => Array.from({length:key === 'category' ? app.categories.length : 4}, (_, index) => Math.round(segments.reduce((sum, item) => sum + item[key][index], 0) / segments.length));
+      const isWorldwide = app.label === 'Worldwide Social Media';
+      const appVolume = APP_VARIATION[app.label];
+      const conversationVolume = isWorldwide ? '420B' : appVolume.signals;
+      const contentVolume = isWorldwide ? '18.4B+' : appVolume.points;
+      return {
+        label:'All suggestions', points:contentVolume, signals:conversationVolume, confidence:'96.4%',
+        category:average('category'), conversion:average('conversion'), conversation:average('conversation'),
+        tiles:segments.map(item => [item.label, item.tiles[0][0]]),
+        suggestion:`Compare the best next move for every audience on ${app.label}. Choose a target audience below to see its focused app, category, and timing plan.`,
+        advice:['Choose an audience to see a focused plan.','Compare the leading content idea for every group.','Use the app and timing details in the focused view.']
+      };
+    }
+
+    function destroyChart(id) { const chart = Chart.getChart($(id)); if (chart) chart.destroy(); }
+    function chartOptions(extra={}) { return {responsive:true, maintainAspectRatio:true, plugins:{legend:{labels:{boxWidth:10, padding:14}}}, ...extra}; }
+
+    function renderCharts(vector) {
+      const {app, segment} = vector;
+      ['popularityChart','categoryChart','compareChart','forecastChart'].forEach(destroyChart);
+      const scale = dashboardState.activeApplication === 'global' ? 100 : 12;
+      contextCharts.popularity = new Chart($('popularityChart'), {type:'doughnut', data:{labels:app.surfaces, datasets:[{data:app.baseSurface.map(value=>Math.round(value*scale*liveMultiplier)), backgroundColor:numberColors, borderWidth:0, hoverOffset:8}]}, options:chartOptions({cutout:'68%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:14}},tooltip:{callbacks:{label:item=>` ${item.label}: ${item.raw.toLocaleString()}M interactions`}}}})});
+      contextCharts.category = new Chart($('categoryChart'), {type:'bar', data:{labels:app.categories, datasets:[{label:'Views (millions)',data:segment.category.map(value=>Math.round(value*10*liveMultiplier)), backgroundColor:numberColors, borderRadius:8, borderSkipped:false}]}, options:chartOptions({plugins:{legend:{display:false}},scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},beginAtZero:true,ticks:{callback:value=>`${value}M`}}}})});
+      contextCharts.compare = new Chart($('compareChart'), {type:'bar', data:{labels:['Discovery','Intent','Conversation','Retention'], datasets:[{label:'Actions (millions)',data:segment.conversion.map(value=>Math.round(value*8*liveMultiplier)),backgroundColor:'#818cf8',borderRadius:7,borderSkipped:false},{label:'Conversations (millions)',data:segment.conversation.map(value=>Math.round(value*8*liveMultiplier)),backgroundColor:'#c084fc',borderRadius:7,borderSkipped:false}]}, options:chartOptions({scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{callback:value=>`${value}M`}}}})});
+      contextCharts.forecast = new Chart($('forecastChart'), {type:'line', data:{labels:['Now','Week 1','Week 2','Week 3','Next month'],datasets:segment.tiles.map((tile,index)=>({label:tile[0],data:[31+index*4,41+index*3,49+index*5,58+index*4,70+index*4],borderColor:numberColors[index],backgroundColor:index===0?'rgba(129,140,248,.12)':'transparent',fill:index===0,tension:.42,pointRadius:3}))},options:chartOptions({scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{display:false}}}})});
+    }
+
+    function renderContext(vector) {
+      const {app, segment} = vector;
+      $('application').value = dashboardState.activeApplication;
+      $('audience').value = dashboardState.targetAudienceSegment;
+      $('pageSubtitle').textContent = `Showing ${app.label} data for ${segment.label}. Every card and chart below uses this exact combination.`;
+      $('kpiPoints').innerHTML = `${liveMetric(segment.points)}<span class="text-sm text-violet-300"> scope</span>`;
+      $('kpiSignals').innerHTML = `${liveMetric(segment.signals)}<span class="text-sm text-indigo-300"> events</span>`;
+      $('kpiConfidence').innerHTML = `${segment.confidence}<span class="text-sm text-emerald-300"> calibrated</span>`;
+      $('popularityTitle').textContent = `${app.label} · ${segment.label} engagement mix`;
+      $('categoryTitle').textContent = `${segment.label} category demand on ${app.label}`;
+      $('compareTitle').textContent = `${app.label} outcomes for ${segment.label}`;
+      $('audienceLabel').textContent = `${app.label} · ${segment.label}`;
+      $('categoryBars').innerHTML = app.categories.map((name,index)=>`<div><div class="mb-2 flex justify-between text-xs font-semibold"><span class="text-slate-300">${name}</span><span class="text-violet-300">${segment.category[index]}%</span></div><div class="h-2 overflow-hidden rounded-full bg-slate-800"><div class="progress-fill h-full rounded-full" style="width:${segment.category[index]}%"></div></div></div>`).join('');
+      $('quickInsights').innerHTML = [[`Primary ${app.label} surface`,app.surfaces[0],'text-pink-300'],['Highest-fit category',app.categories[segment.category.indexOf(Math.max(...segment.category))],'text-emerald-300'],['Predicted breakout',app.boom,'text-violet-300']].map(([label,value,color])=>`<div class="rounded-xl border border-white/10 bg-white/[.035] p-3"><p class="text-xs text-slate-400">${label}</p><p class="mt-1 font-bold ${color}">${value}</p></div>`).join('');
+      const showingAllSuggestions = dashboardState.targetAudienceSegment === 'all';
+      $('predictionTiles').innerHTML = segment.tiles.map(([name,growth])=>`<div class="rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] p-3"><span class="rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-bold text-emerald-300">${showingAllSuggestions ? 'Best next content' : `${growth} surge expected`}</span><p class="mt-3 text-sm font-bold text-white">${showingAllSuggestions ? name : name}</p>${showingAllSuggestions ? `<p class="mt-1 text-xs leading-5 text-slate-300">${growth}</p>` : ''}</div>`).join('');
+      $('suggestionText').textContent = segment.suggestion;
+      const leadingCategory = app.categories[segment.category.indexOf(Math.max(...segment.category))];
+      const launchPlan = dashboardState.activeApplication === 'global' && segment.advice.length >= 3 ? segment.advice : [`Best app focus: ${app.label}`,`Best category: ${leadingCategory}`,`Start window: ${app.time}`];
+      $('audiencePlan').innerHTML = launchPlan.slice(0,3).map(item => `<div class="rounded-lg border border-white/10 bg-white/[.035] px-3 py-2 text-xs leading-5 text-slate-300">${item}</div>`).join('');
+      $('appCards').innerHTML = `<article class="glass glow-border flex flex-col rounded-2xl p-5"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="rounded-xl border border-white/10 bg-white/5 p-2.5 ${app.color}"><i data-lucide="${app.icon}" class="h-5 w-5"></i></div><div><h3 class="font-display text-lg font-extrabold text-white">${app.label}</h3><p class="text-xs text-violet-300">${segment.label} context</p></div></div><span class="rounded-full bg-indigo-400/10 px-2 py-1 text-[10px] font-bold text-indigo-200">ACTIVE</span></div><div class="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1"><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Most used time</p><p class="mt-1 text-sm font-semibold text-slate-200">${app.time}</p></div><div class="rounded-xl bg-white/[.035] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current top category</p><p class="mt-1 text-sm font-semibold text-slate-200">${app.top}</p></div><div class="rounded-xl border border-emerald-400/15 bg-emerald-400/[.05] p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Predicted booming category</p><p class="mt-1 text-sm font-semibold text-emerald-100">${app.boom}</p></div></div><p class="mt-4 text-xs text-indigo-200">${app.metric}</p><div class="mt-4 border-t border-white/10 pt-4"><p class="text-xs font-bold uppercase tracking-wider text-violet-300">Rule-based suggestion engine</p><ul class="mt-2 space-y-1.5 text-xs leading-5 text-slate-400">${segment.advice.map(item=>`<li class="flex gap-2"><span class="text-violet-300">•</span>${item}</li>`).join('')}</ul></div></article>`;
+      renderCharts(vector);
+      lucide.createIcons();
+    }
+
+    /** Draws the independent, fixed-million search comparison cards. */
+    function renderSearchIntelligence() {
+      const engines = [
+        ['Google',5400,'#818cf8','Everyday questions, maps & shopping'],
+        ['YouTube Search',2100,'#ef4444','Video how-tos & entertainment'],
+        ['Bing',680,'#22d3ee','Work, news & AI-assisted search'],
+        ['Yahoo',410,'#a78bfa','News, finance & email users'],
+        ['Baidu',860,'#f97316','Search, video & services in China']
+      ];
+      const categories = [['AI tools',1280],['Entertainment',1170],['Education',960],['Shopping',830],['Health & food',720]];
+      destroyChart('searchEngineChart'); destroyChart('searchCategoryChart');
+      contextCharts.searchEngines = new Chart($('searchEngineChart'), {type:'bar',data:{labels:engines.map(item=>item[0]),datasets:[{label:'Searches (millions)',data:engines.map(item=>Math.round(item[1]*liveMultiplier)),backgroundColor:engines.map(item=>item[2]),borderRadius:8,borderSkipped:false}]},options:chartOptions({plugins:{legend:{display:false}},scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{callback:value=>value >= 1000 ? `${(value/1000).toFixed(1)}B` : `${value}M`}}}})});
+      contextCharts.searchCategories = new Chart($('searchCategoryChart'), {type:'bar',data:{labels:categories.map(item=>item[0]),datasets:[{label:'Searches (millions)',data:categories.map(item=>Math.round(item[1]*liveMultiplier)),backgroundColor:['#22d3ee','#818cf8','#a78bfa','#f472b6','#34d399'],borderRadius:8,borderSkipped:false}]},options:chartOptions({plugins:{legend:{display:false}},scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{callback:value=>`${value}M`}}}})});
+      $('searchEngineRows').innerHTML = engines.map(([name,volume,color,focus]) => `<div class="rounded-xl border border-white/10 bg-white/[.035] p-4"><div class="flex items-center justify-between"><p class="font-bold text-white">${name}</p><span class="h-2.5 w-2.5 rounded-full" style="background:${color}"></span></div><p class="mt-3 text-xl font-extrabold text-white">${Math.round(volume*liveMultiplier).toLocaleString()}<span class="text-xs text-slate-400">M</span></p><p class="mt-1 text-xs leading-5 text-slate-400">${focus}</p></div>`).join('');
+    }
+
+
+    const THREAT_DATA={categories:{phishing:{label:'Phishing',value:88,peak:'8:00 – 10:00 PM',highest:'Phishing Campaigns',vector:'Credential Harvesting'},botnets:{label:'Botnets & Automation',value:76,peak:'7:00 – 11:00 PM',highest:'Bot Amplification',vector:'Coordinated Posting'},scams:{label:'Scams & Fraud',value:61,peak:'6:00 – 9:00 PM',highest:'Payment Scams',vector:'Social Engineering'},disinformation:{label:'Disinformation',value:69,peak:'5:00 – 10:00 PM',highest:'Coordinated Narratives',vector:'Narrative Manipulation'},malware:{label:'Malware Distribution',value:47,peak:'9:00 – 11:00 PM',highest:'Malware Lures',vector:'Malicious Downloads'},radicalization:{label:'Radicalization',value:43,peak:'8:00 – 11:00 PM',highest:'Recruitment Signals',vector:'Closed-Group Migration'}},audiences:{students:{label:'Students',value:78},creators:{label:'Content Creators',value:66},startups:{label:'Startups',value:59},ecommerce:{label:'E-commerce',value:73},localbusiness:{label:'Local Businesses',value:64},nonprofits:{label:'Nonprofits',value:48},agencies:{label:'Agencies',value:54}}};
+    let threatMatrixChart=null;
+    function renderThreatAnalysis(){const category=$('threatCategory').value,audience=$('threatAudience').value;const keys=category==='all'?Object.keys(THREAT_DATA.categories):[category];const am=audience==='all'?1:(THREAT_DATA.audiences[audience]?.value||60)/70;const cm=category==='all'?1:.82;const cat=THREAT_DATA.categories[keys[0]];$('overallThreats').textContent=Math.round(2847*cm*am).toLocaleString();$('criticalThreats').textContent=Math.round(184*cm*am).toLocaleString();$('coordinatedThreats').textContent=Math.max(8,Math.round(38*am));$('peakThreatTime').textContent=cat?.peak||'7:00 – 10:00 PM';$('highestThreat').textContent=cat?.highest||'Phishing Campaigns';$('escalatingVector').textContent=cat?.vector||'Coordinated Bot Activity';$('threatFilterBadge').textContent=(cat?.label||'ALL SIGNALS').toUpperCase()+(audience!=='all'?' · '+THREAT_DATA.audiences[audience].label.toUpperCase():'');$('threatCategoryBars').innerHTML=keys.map(k=>{const d=THREAT_DATA.categories[k];return `<button data-threat-cat="${k}" class="w-full text-left"><div class="mb-1 flex justify-between text-xs"><span class="text-slate-300">${d.label}</span><span class="text-slate-500">${d.value}</span></div><div class="h-2 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-rose-400 to-orange-400" style="width:${d.value}%"></div></div></button>`}).join('');const akeys=audience==='all'?Object.keys(THREAT_DATA.audiences):[audience];$('threatAudienceBars').innerHTML=akeys.map(k=>{const d=THREAT_DATA.audiences[k];return `<button data-threat-aud="${k}" class="w-full text-left"><div class="mb-1 flex justify-between text-xs"><span class="text-slate-300">${d.label}</span><span class="text-slate-500">${d.value}</span></div><div class="h-2 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-400" style="width:${d.value}%"></div></div></button>`}).join('');const feeds=[['Phishing campaign','X + Telegram','CRITICAL','Common URL fingerprint across coordinated posts'],['Bot amplification','Instagram + X','HIGH','Abnormal burst from linked account cluster'],['Scam promotion','Discord + WhatsApp','HIGH','Repeated payment-lure language and redirects'],['Narrative anomaly','YouTube + Facebook','MEDIUM','Sudden cross-platform sentiment divergence']];$('threatFeed').innerHTML=feeds.map(f=>`<div class="flex gap-3 py-3"><span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${f[2]==='CRITICAL'?'bg-rose-400':f[2]==='HIGH'?'bg-orange-400':'bg-amber-300'}"></span><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><p class="text-sm font-bold text-white">${f[0]}</p><span class="text-[10px] text-slate-500">${f[1]}</span><span class="ml-auto text-[10px] font-bold text-rose-300">${f[2]}</span></div><p class="mt-1 text-xs leading-5 text-slate-500">${f[3]}</p></div></div>`).join('');document.querySelectorAll('[data-threat-cat]').forEach(b=>b.addEventListener('click',()=>{$('threatCategory').value=b.dataset.threatCat;renderThreatAnalysis()}));document.querySelectorAll('[data-threat-aud]').forEach(b=>b.addEventListener('click',()=>{$('threatAudience').value=b.dataset.threatAud;renderThreatAnalysis()}));if(threatMatrixChart)threatMatrixChart.destroy();threatMatrixChart=new Chart($('threatMatrixChart'),{type:'bar',data:{labels:keys.map(k=>THREAT_DATA.categories[k].label),datasets:[{label:'Threat intensity',data:keys.map(k=>Math.round(THREAT_DATA.categories[k].value*am)),backgroundColor:keys.map(()=> '#ef4444'),borderRadius:8}]},options:chartOptions({plugins:{legend:{display:false}},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,max:100,grid:{color:'rgba(255,255,255,.06)'},border:{display:false},ticks:{callback:v=>v+'%'}}}})});lucide.createIcons()}
+    $('threatCategory').addEventListener('change',renderThreatAnalysis);$('threatAudience').addEventListener('change',renderThreatAnalysis);renderThreatAnalysis();
+
+    $('application').addEventListener('change', event => transitionContext({activeApplication:event.target.value}));
+    $('audience').addEventListener('change', event => transitionContext({targetAudienceSegment:event.target.value}));
+    document.querySelector('[data-view="overview"]').addEventListener('click', () => transitionContext({activeApplication:'global'}));
+    document.querySelector('[data-view="apps"]').addEventListener('click', () => { if (dashboardState.activeApplication === 'global') transitionContext({activeApplication:'instagram'}); });
+    document.querySelector('[data-view="search"]').addEventListener('click', () => setTimeout(renderSearchIntelligence, 0));
+    window.addEventListener('resize', () => Object.values(contextCharts).forEach(chart => chart.resize()));
+    function refreshLiveData() {
+      liveMultiplier = getLiveMultiplier();
+      transitionContext({});
+      renderSearchIntelligence();
+      $('liveStatus').textContent = `Updated ${new Intl.DateTimeFormat([], {hour:'2-digit', minute:'2-digit'}).format(new Date())}`;
+    }
+    refreshAudienceOptions();
+    refreshLiveData();
+    // A new snapshot is drawn every minute while the dashboard is open.
+    setInterval(refreshLiveData, 60000);
+  </script>
+
+<script id="SOCIAL_SYNC_SIH_THREAT_ENGINE_V2">
+/* SOCIAL_SYNC_SIH_THREAT_ENGINE_V2
+   Frontend demonstration engine.
+   Every page open gets a new snapshot seed.
+   Every App × Threat Category × Audience combination gets distinct values.
+   Production: replace generator with approved live API/backend ML output.
+*/
+(function(){
+  const VERSION='SOCIAL_SYNC_SIH_THREAT_ENGINE_V2';
+  const APPS=[
+    ['all','All Apps'],['instagram','Instagram'],['youtube','YouTube'],['linkedin','LinkedIn'],
+    ['facebook','Facebook'],['whatsapp','WhatsApp'],['telegram','Telegram'],['x','X'],['discord','Discord']
+  ];
+  const CATS=[
+    ['all','All Threat Categories'],['phishing','Phishing'],['botnets','Botnets & Automation'],
+    ['scams','Scams & Fraud'],['disinformation','Disinformation'],['malware','Malware Distribution'],['radicalization','Radicalization']
+  ];
+  const AUDS=[
+    ['all','All Audience Segments'],['students','Students'],['creators','Content Creators'],['startups','Startups'],
+    ['ecommerce','E-commerce'],['localbusiness','Local Businesses'],['nonprofits','Nonprofits'],['agencies','Agencies']
+  ];
+  const THREATS=['Phishing','Botnets & Automation','Scams & Fraud','Disinformation','Malware Distribution','Radicalization'];
+  const APP_NAMES=APPS.slice(1);
+  const CAT_LABEL=Object.fromEntries(CATS.map(x=>x));
+  const AUD_LABEL=Object.fromEntries(AUDS.map(x=>x));
+  const freshSeed=(Date.now() ^ Math.floor(Math.random()*4294967295)) >>> 0;
+
+  function hash(s){
+    let h=(2166136261 ^ freshSeed)>>>0;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+    h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909);
+    return (h^(h>>>16))>>>0;
+  }
+  function n(key,min,max){return min+(hash(key)%(max-min+1));}
+  function $(id){return document.getElementById(id);}
+  function text(id,v){if($(id))$(id).textContent=v;}
+  function width(id,v){if($(id))$(id).style.width=Math.max(2,Math.min(100,v))+'%';}
+
+  function filters(){
+    return {
+      app:$('threatApp')?.value||'all',
+      cat:$('threatCategory')?.value||'all',
+      aud:$('threatAudience')?.value||'all'
+    };
+  }
+  function scope(f){return f.app+'|'+f.cat+'|'+f.aud;}
+  function sev(v){return v>=85?'CRITICAL':v>=70?'HIGH':v>=50?'MEDIUM':'LOW';}
+
+  function update(){
+    const f=filters(), key=scope(f);
+
+    // Distinct stats for every combination.
+    const overall=n(key+'|overall',1450,4990);
+    const critical=n(key+'|critical',38,420);
+    const coordinated=n(key+'|coord',15,118);
+    const evidence=n(key+'|evidence',91,99);
+    const velocity=n(key+'|velocity',12,68);
+    const accel=(n(key+'|accel',11,28)/10).toFixed(1);
+
+    text('overallThreats',overall.toLocaleString());
+    text('criticalThreats',critical.toLocaleString());
+    text('coordinatedThreats',coordinated);
+    // Evidence card has no ID in original, so leave its presentation intact.
+
+    const catKeys=f.cat==='all'?CATS.slice(1).map(x=>x[0]):[f.cat];
+    const catValues=catKeys.map(c=>[c,n(key+'|cat|'+c,35,96)]);
+    const audKeys=f.aud==='all'?AUDS.slice(1).map(x=>x[0]):[f.aud];
+    const audValues=audKeys.map(a=>[a,n(key+'|aud|'+a,28,94)]);
+
+    const cb=$('threatCategoryBars');
+    if(cb) cb.innerHTML=catValues.map(([c,v])=>`<button data-threat-cat="${c}" class="w-full text-left group">
+      <div class="mb-1 flex justify-between text-xs"><span class="text-slate-300">${CAT_LABEL[c]}</span><span class="font-semibold text-slate-400">${v}%</span></div>
+      <div class="h-2 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-rose-400 to-orange-400 transition-all duration-500" style="width:${v}%"></div></div>
+    </button>`).join('');
+
+    const ab=$('threatAudienceBars');
+    if(ab) ab.innerHTML=audValues.map(([a,v])=>`<button data-threat-aud="${a}" class="w-full text-left">
+      <div class="mb-1 flex justify-between text-xs"><span class="text-slate-300">${AUD_LABEL[a]}</span><span class="font-semibold text-slate-400">${v}%</span></div>
+      <div class="h-2 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-400 transition-all duration-500" style="width:${v}%"></div></div>
+    </button>`).join('');
+
+    // Existing monitoring cards.
+    const peak=['6:00 – 9:00 PM','7:00 – 10:00 PM','8:00 – 11:00 PM','10:00 AM – 1:00 PM'][n(key+'|peak',0,3)];
+    const highest=THREATS[n(key+'|highest',0,THREATS.length-1)];
+    const vector=['Coordinated Bot Activity','Malicious URL Propagation','Narrative Manipulation','Scam Amplification'][n(key+'|vector',0,3)];
+    text('peakThreatTime',peak); text('highestThreat',highest); text('escalatingVector',vector);
+    text('threatFilterBadge',(CAT_LABEL[f.cat]||'ALL SIGNALS').toUpperCase()+' · '+(f.app==='all'?'ALL APPS':CAT_LABEL[f.app]||f.app.toUpperCase())+' · '+(AUD_LABEL[f.aud]||'ALL AUDIENCES').toUpperCase());
+
+    // New segment 1: exposure by app.
+    const apps=f.app==='all'?APP_NAMES.map(x=>x[0]):[f.app];
+    const appBars=apps.map(a=>[a,n(key+'|app|'+a,32,97)]).sort((a,b)=>b[1]-a[1]);
+    const appEl=$('threatAppBars');
+    if(appEl) appEl.innerHTML=appBars.map(([a,v])=>`<div>
+      <div class="mb-1 flex justify-between text-xs"><span class="text-slate-300">${CAT_LABEL[a]||a[0].toUpperCase()+a.slice(1)}</span><span class="text-slate-500">${v}%</span></div>
+      <div class="h-2 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500" style="width:${v}%"></div></div>
+    </div>`).join('');
+
+    // New segment 2: velocity & escalation.
+    text('velocity24h','+'+velocity+'%');
+    text('accelerationValue',accel+'×');
+    const escalation=n(key+'|escalation',48,97);
+    text('escalationIndex',escalation+'/100');
+    width('escalationBar',escalation);
+    text('escalationDetail', escalation>=80
+      ? 'Rapid synchronized activity is accelerating across the selected scope; analyst review is recommended.'
+      : 'Activity is increasing, but the selected scope has not reached a critical escalation threshold.');
+
+    // AI prediction.
+    const predicted=THREATS[n(key+'|prediction',0,THREATS.length-1)];
+    const probability=n(key+'|probability',61,95);
+    const confidence=probability>=84?'High':probability>=72?'Moderate':'Watch';
+    const windows=['next 12–24 hours','next 24–48 hours','next 48–72 hours'];
+    const win=windows[n(key+'|window',0,2)];
+    text('aiPredictedThreat',predicted);
+    text('aiPredictionProbability',probability+'%');
+    width('aiProbabilityBar',probability);
+    text('aiPredictionConfidence',confidence);
+    text('aiPredictionWindow',win);
+    text('aiPredictionTrend',velocity>=45?'Signal velocity rapidly rising':velocity>=25?'Signal velocity rising':'Signal velocity being monitored');
+    text('aiForecastBadge','AI FORECAST · '+confidence.toUpperCase()+' CONFIDENCE');
+    const reasons=[
+      'Abnormal conversation velocity, repeated suspicious indicators and coordinated account behaviour are contributing to the forecast.',
+      'The model is weighting cross-platform narrative overlap, URL repetition and sudden sentiment movement.',
+      'Account similarity, posting bursts and threat-related topic concentration are increasing the projected risk.',
+      'Recent signal density and coordinated engagement patterns are producing an elevated forward-risk estimate.'
+    ];
+    const scopeText=[f.app==='all'?'All Apps':CAT_LABEL[f.app],CAT_LABEL[f.cat],AUD_LABEL[f.aud]].join(' · ');
+    text('aiPredictionReason',reasons[n(key+'|reason',0,reasons.length-1)]+' Active scope: '+scopeText+'.');
+    text('aiGeneratedAt','Generated '+new Intl.DateTimeFormat([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date()));
+
+    // Radar.
+    const radar=THREATS.map(t=>({t,score:n(key+'|radar|'+t,43,96)})).sort((a,b)=>b.score-a.score);
+    const radarEl=$('aiThreatRadar');
+    if(radarEl) radarEl.innerHTML=radar.slice(0,5).map((r,i)=>`<div class="rounded-xl border border-white/10 bg-white/[.025] p-3">
+      <div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-md bg-white/5 text-[10px] text-slate-500">${i+1}</span><span class="text-xs font-semibold text-slate-200">${r.t}</span></div><span class="text-xs font-bold ${r.score>=80?'text-rose-300':r.score>=65?'text-orange-300':'text-amber-300'}">${r.score}%</span></div>
+      <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5"><div class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400" style="width:${r.score}%"></div></div>
+    </div>`).join('');
+
+    text('threatSnapshotStatus','Fresh snapshot '+new Intl.DateTimeFormat([], {dateStyle:'medium',timeStyle:'medium'}).format(new Date())+' · App × Category × Audience filters recalculated.');
+
+    // Existing category/audience quick buttons are recreated above, so re-bind them.
+    document.querySelectorAll('[data-threat-cat]').forEach(b=>b.onclick=()=>{
+      if($('threatCategory')) $('threatCategory').value=b.dataset.threatCat;
+      update();
+    });
+    document.querySelectorAll('[data-threat-aud]').forEach(b=>b.onclick=()=>{
+      if($('threatAudience')) $('threatAudience').value=b.dataset.threatAud;
+      update();
+    });
+    if(window.lucide) lucide.createIcons();
+  }
+
+  function bind(){
+    ['threatApp','threatCategory','threatAudience'].forEach(id=>{
+      const el=$(id);
+      if(el) el.addEventListener('change',update);
+    });
+    // Recalculate when Threat Analysis is opened from the sidebar.
+    const nav=document.querySelector('[data-view="threats"]');
+    if(nav) nav.addEventListener('click',()=>setTimeout(update,80));
+    // Initial fresh snapshot every time the website is opened.
+    update();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
+  else bind();
+})();
+</script>
+
+<script src="/static/backend-connector.js"></script>
+
+</body>
+</html>

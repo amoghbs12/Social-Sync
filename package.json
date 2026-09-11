@@ -1,0 +1,12 @@
+{
+  "name": "social-sync-sih",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Social Sync cybersecurity intelligence dashboard",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
