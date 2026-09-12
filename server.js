@@ -1,2188 +1,2183 @@
-/**
- * SOCIAL SYNC — REAL-TIME PUBLIC INTELLIGENCE BACKEND
- *
- * Frontend is NOT changed.
- *
- * Live/public sources:
- *   1. Google Trends RSS
- *   2. Google News RSS
- *   3. Reddit public JSON
- *   4. CISA Known Exploited Vulnerabilities (KEV)
- *   5. NIST NVD
- *   6. FIRST EPSS
- *
- * Features:
- *   - Live trend analysis
- *   - Social threat signal detection
- *   - Named threat classification
- *   - Cyber vulnerability intelligence
- *   - Threat scoring
- *   - 24–48 hour explainable prediction
- *   - Rolling signal history
- *   - Server-Sent Events
- *   - Evidence hashing
- *
- * IMPORTANT:
- * This backend does not invent live counts.
- * If a public source is unavailable, source_status reports it.
- */
+// ============================================================
+// SOCIAL SYNC - LIVE SOCIAL MEDIA TREND + CYBER THREAT BACKEND
+// SIH 2026
+// ============================================================
 
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { exec } = require("child_process");
 
-/* ============================================================
-   SERVER CONFIGURATION
-   ============================================================ */
+// ------------------------------------------------------------
+// CONFIGURATION
+// ------------------------------------------------------------
 
-const PORT = Number(process.env.PORT || 5000);
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || "0.0.0.0";
 
-const HOST =
-  process.env.HOST ||
-  (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
-
+// IMPORTANT:
+// Your index.html is in the ROOT of the repository.
+// static/ contains additional frontend assets.
+const ROOT_DIR = __dirname;
 const STATIC_DIR = path.join(__dirname, "static");
+const INDEX_FILE = path.join(ROOT_DIR, "index.html");
 
-const evidence = new Map();
+const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
-/* ============================================================
-   CACHE + LIVE REFRESH
-   ============================================================ */
+// ------------------------------------------------------------
+// FILTER OPTIONS
+// ------------------------------------------------------------
 
-const CACHE = {
-  trends: 10 * 60 * 1000,
-  social: 2 * 60 * 1000,
-  news: 2 * 60 * 1000,
-  cyber: 5 * 60 * 1000
+const SUPPORTED_APPS = [
+    "all",
+    "instagram",
+    "youtube",
+    "linkedin",
+    "facebook",
+    "whatsapp",
+    "telegram",
+    "x",
+    "discord"
+];
+
+const THREAT_CATEGORIES = [
+    "all",
+    "phishing",
+    "botnets",
+    "scams",
+    "disinformation",
+    "malware",
+    "radicalization"
+];
+
+const AUDIENCES = [
+    "all",
+    "students",
+    "creators",
+    "startups",
+    "ecommerce",
+    "localbusiness",
+    "nonprofits",
+    "agencies"
+];
+
+// ------------------------------------------------------------
+// GLOBAL INTELLIGENCE STATE
+// ------------------------------------------------------------
+
+const state = {
+    lastUpdated: null,
+
+    trends: [],
+    threats: [],
+    evidence: [],
+
+    prediction: {
+        horizon: "24-48 hours",
+        generatedAt: null,
+        signals: []
+    },
+
+    sourceStatus: {
+        googleTrends: "unknown",
+        googleNews: "unknown",
+        reddit: "unknown",
+        cisaKev: "unknown",
+        nvd: "unknown",
+        epss: "unknown"
+    },
+
+    metrics: {
+        trendSignals: 0,
+        threatSignals: 0,
+        phishingSignals: 0,
+        scamSignals: 0,
+        malwareSignals: 0,
+        botSignals: 0,
+        disinformationSignals: 0,
+        radicalizationSignals: 0,
+        criticalVulnerabilities: 0
+    }
 };
 
-const REFRESH_INTERVAL = 2 * 60 * 1000;
+// Rolling historical intelligence for prediction.
+const history = [];
 
-let trendCache = {
-  value: null,
-  expiresAt: 0
-};
+// Connected SSE clients.
+const clients = new Set();
 
-let socialCache = {
-  value: null,
-  expiresAt: 0
-};
+// ------------------------------------------------------------
+// UTILITY FUNCTIONS
+// ------------------------------------------------------------
 
-let newsCache = {
-  value: null,
-  expiresAt: 0
-};
-
-let cyberCache = {
-  value: null,
-  expiresAt: 0
-};
-
-/*
- * Rolling history is used by the prediction engine.
- * It is intentionally in memory so no frontend/database change
- * is required.
- */
-const intelligenceHistory = [];
-
-const MAX_HISTORY = 180;
-
-/* ============================================================
-   HTTP HELPERS
-   ============================================================ */
-
-function send(res, status, body, type = "application/json") {
-  res.writeHead(status, {
-    "Content-Type": `${type}; charset=utf-8`,
-    "Access-Control-Allow-Origin": "*",
-    "Cache-Control": "no-store"
-  });
-
-  if (type === "application/json") {
-    res.end(JSON.stringify(body));
-  } else {
-    res.end(body);
-  }
+function nowISO() {
+    return new Date().toISOString();
 }
 
-/* ============================================================
-   DASHBOARD FILTERS
-   ============================================================ */
-
-function filters(url) {
-  const data = {
-    app: (url.searchParams.get("app") || "all").toLowerCase(),
-    category: (url.searchParams.get("category") || "all").toLowerCase(),
-    audience: (url.searchParams.get("audience") || "all").toLowerCase()
-  };
-
-  const allowed = {
-    app: [
-      "all",
-      "instagram",
-      "youtube",
-      "linkedin",
-      "facebook",
-      "whatsapp",
-      "telegram",
-      "x",
-      "discord"
-    ],
-
-    category: [
-      "all",
-      "phishing",
-      "botnets",
-      "scams",
-      "disinformation",
-      "malware",
-      "radicalization"
-    ],
-
-    audience: [
-      "all",
-      "students",
-      "creators",
-      "startups",
-      "ecommerce",
-      "localbusiness",
-      "nonprofits",
-      "agencies"
-    ]
-  };
-
-  const valid = Object.entries(data).every(
-    ([key, value]) => allowed[key].includes(value)
-  );
-
-  return valid ? data : null;
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
 }
 
-/* ============================================================
-   PUBLIC HTTPS FETCHERS
-   ============================================================ */
+function hashString(value) {
+    return crypto
+        .createHash("sha256")
+        .update(String(value))
+        .digest("hex");
+}
 
-function fetchText(url, extraHeaders = {}) {
-  return new Promise((resolve, reject) => {
-    const request = https.get(
-      url,
-      {
-        headers: {
-          "User-Agent": "SocialSync-SIH-2026/1.0",
-          "Accept": "*/*",
-          ...extraHeaders
-        },
-        timeout: 10000
-      },
-      response => {
-        let raw = "";
+function safeNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
 
-        response.setEncoding("utf8");
+function normalizeText(value) {
+    return String(value || "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 
-        response.on("data", chunk => {
-          raw += chunk;
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ------------------------------------------------------------
+// HTTP FETCH
+// ------------------------------------------------------------
+
+function fetchURL(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        const request = https.get(
+            url,
+            {
+                headers: {
+                    "User-Agent":
+                        "Social-Sync-SIH2026/1.0 (+public-threat-intelligence)",
+                    Accept: "*/*",
+                    ...options.headers
+                },
+                timeout: options.timeout || 15000
+            },
+            (response) => {
+                let body = "";
+
+                response.setEncoding("utf8");
+
+                response.on("data", chunk => {
+                    body += chunk;
+                });
+
+                response.on("end", () => {
+                    if (
+                        response.statusCode >= 300 &&
+                        response.statusCode < 400 &&
+                        response.headers.location
+                    ) {
+                        fetchURL(response.headers.location, options)
+                            .then(resolve)
+                            .catch(reject);
+                        return;
+                    }
+
+                    if (response.statusCode < 200 || response.statusCode >= 300) {
+                        reject(
+                            new Error(
+                                `HTTP ${response.statusCode} from ${url}`
+                            )
+                        );
+                        return;
+                    }
+
+                    resolve(body);
+                });
+            }
+        );
+
+        request.on("timeout", () => {
+            request.destroy();
+            reject(new Error(`Timeout: ${url}`));
         });
 
-        response.on("end", () => {
-          if (
-            response.statusCode < 200 ||
-            response.statusCode >= 300
-          ) {
-            reject(
-              new Error(`HTTP ${response.statusCode}`)
-            );
-            return;
-          }
-
-          resolve(raw);
-        });
-      }
-    );
-
-    request.on("error", reject);
-
-    request.on("timeout", () => {
-      request.destroy(
-        new Error("Request timed out")
-      );
+        request.on("error", reject);
     });
-  });
 }
 
-function fetchJson(url, extraHeaders = {}) {
-  return fetchText(url, {
-    Accept: "application/json",
-    ...extraHeaders
-  }).then(raw => JSON.parse(raw));
+async function fetchJSON(url, options = {}) {
+    const body = await fetchURL(url, options);
+
+    try {
+        return JSON.parse(body);
+    } catch {
+        throw new Error(`Invalid JSON response from ${url}`);
+    }
 }
 
-/* ============================================================
-   XML HELPERS
-   ============================================================ */
+// ------------------------------------------------------------
+// RSS PARSER
+// ------------------------------------------------------------
 
-function decodeXml(value = "") {
-  return String(value)
-    .replace(
-      /<!\[CDATA\[([\s\S]*?)\]\]>/g,
-      "$1"
-    )
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+function parseRSS(xml, sourceName) {
+    const items = [];
+
+    const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+    for (const block of blocks) {
+        const titleMatch =
+            block.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+
+        const linkMatch =
+            block.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
+
+        const pubDateMatch =
+            block.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
+
+        const descriptionMatch =
+            block.match(
+                /<description[^>]*>([\s\S]*?)<\/description>/i
+            );
+
+        const title = normalizeText(
+            titleMatch ? titleMatch[1] : ""
+        );
+
+        const link = normalizeText(
+            linkMatch ? linkMatch[1] : ""
+        );
+
+        const published = normalizeText(
+            pubDateMatch ? pubDateMatch[1] : ""
+        );
+
+        const description = normalizeText(
+            descriptionMatch ? descriptionMatch[1] : ""
+        );
+
+        if (!title) continue;
+
+        items.push({
+            title,
+            link,
+            published,
+            description,
+            source: sourceName
+        });
+    }
+
+    return items;
 }
 
-function xmlTag(xml, tag) {
-  const match = xml.match(
-    new RegExp(
-      `<${tag}(?:\\:[^>]+)?>([\\s\\S]*?)</${tag}(?:\\:[^>]+)?>`,
-      "i"
-    )
-  );
-
-  return match ? decodeXml(match[1]) : "";
-}
-
-/* ============================================================
-   GOOGLE TRENDS
-   ============================================================ */
-
-async function publicTrends(geo = "IN") {
-  if (
-    trendCache.value &&
-    trendCache.value.geo === geo &&
-    Date.now() < trendCache.expiresAt
-  ) {
-    return trendCache.value;
-  }
-
-  try {
-    const url =
-      `https://trends.google.com/trending/rss?geo=${encodeURIComponent(geo)}`;
-
-    const rss = await fetchText(url);
-
-    const items = [
-      ...rss.matchAll(/<item>([\s\S]*?)<\/item>/gi)
-    ]
-      .slice(0, 20)
-      .map(match => {
-        const item = match[1];
-
-        return {
-          topic: xmlTag(item, "title"),
-          traffic: xmlTag(item, "ht:approx_traffic"),
-          published_at: xmlTag(item, "pubDate"),
-          source: "Google Trends"
-        };
-      })
-      .filter(item => item.topic);
-
-    const result = {
-      geo,
-      source: "Google Trends public RSS",
-      source_status:
-        items.length > 0 ? "live" : "unavailable",
-      items,
-      generated_at: new Date().toISOString()
-    };
-
-    trendCache = {
-      value: result,
-      expiresAt: Date.now() + CACHE.trends
-    };
-
-    return result;
-  } catch (error) {
-    return {
-      geo,
-      source: "Google Trends public RSS",
-      source_status: "unavailable",
-      items: [],
-      error: error.message,
-      generated_at: new Date().toISOString()
-    };
-  }
-}
-
-/* ============================================================
-   THREAT CLASSIFICATION ENGINE
-   ============================================================ */
+// ------------------------------------------------------------
+// THREAT CLASSIFICATION
+// ------------------------------------------------------------
 
 function classifyThreat(text) {
-  const value = String(text || "").toLowerCase();
+    const value = String(text || "").toLowerCase();
 
-  const rules = [
-    {
-      category: "phishing",
-      keywords: [
-        "phishing",
+    const rules = [
+        {
+            category: "phishing",
+            name: "Credential-Phishing Attempt",
+            code: "THREAT-PHI-001",
+            keywords: [
+                "phishing",
+                "credential theft",
+                "fake login",
+                "login page",
+                "password",
+                "account takeover",
+                "steal credentials",
+                "credential harvesting"
+            ]
+        },
+
+        {
+            category: "scams",
+            name: "Social Engineering / Scam Signal",
+            code: "THREAT-SCM-001",
+            keywords: [
+                "scam",
+                "fraud",
+                "giveaway scam",
+                "investment scam",
+                "crypto scam",
+                "impersonation",
+                "fake offer",
+                "social engineering"
+            ]
+        },
+
+        {
+            category: "malware",
+            name: "Malware Distribution Signal",
+            code: "THREAT-MAL-001",
+            keywords: [
+                "malware",
+                "trojan",
+                "ransomware",
+                "spyware",
+                "infostealer",
+                "payload",
+                "malicious file",
+                "malicious software"
+            ]
+        },
+
+        {
+            category: "botnets",
+            name: "Automated / Coordinated Activity",
+            code: "THREAT-BOT-001",
+            keywords: [
+                "botnet",
+                "bots",
+                "automated accounts",
+                "coordinated accounts",
+                "bot activity",
+                "automated activity",
+                "fake accounts"
+            ]
+        },
+
+        {
+            category: "disinformation",
+            name: "Potential Coordinated Disinformation",
+            code: "THREAT-DIS-001",
+            keywords: [
+                "disinformation",
+                "misinformation",
+                "false information",
+                "propaganda",
+                "coordinated campaign",
+                "influence operation",
+                "information operation"
+            ]
+        },
+
+        {
+            category: "radicalization",
+            name: "Potential Radicalization Signal",
+            code: "THREAT-RAD-001",
+            keywords: [
+                "radicalization",
+                "extremist recruitment",
+                "extremist content",
+                "violent extremism",
+                "terror recruitment",
+                "extremist propaganda"
+            ]
+        }
+    ];
+
+    for (const rule of rules) {
+        const matches = rule.keywords.filter(keyword =>
+            value.includes(keyword)
+        );
+
+        if (matches.length > 0) {
+            return {
+                category: rule.category,
+                name: rule.name,
+                code: rule.code,
+                matchedKeywords: matches
+            };
+        }
+    }
+
+    return null;
+}
+
+// ------------------------------------------------------------
+// RISK SCORING
+// ------------------------------------------------------------
+
+function calculateRisk(text, source = "") {
+    const value = String(text || "").toLowerCase();
+
+    let score = 25;
+
+    const highRiskTerms = [
         "credential",
-        "password",
-        "login",
-        "otp",
-        "verify account",
-        "fake login",
-        "account verification"
-      ],
-      name: "Credential-Phishing Attempt",
-      code: "THREAT-PHI-001",
-      severity: "high"
-    },
+        "ransomware",
+        "malware",
+        "exploit",
+        "phishing",
+        "account takeover",
+        "botnet",
+        "critical",
+        "zero-day",
+        "trojan",
+        "infostealer"
+    ];
 
-    {
-      category: "scams",
-      keywords: [
+    const mediumRiskTerms = [
         "scam",
         "fraud",
-        "fake offer",
-        "investment scam",
-        "giveaway scam",
-        "upi fraud",
-        "financial fraud"
-      ],
-      name: "Social Engineering / Scam Signal",
-      code: "THREAT-SCM-001",
-      severity: "high"
-    },
-
-    {
-      category: "malware",
-      keywords: [
-        "malware",
-        "ransomware",
-        "trojan",
-        "spyware",
-        "virus",
-        "payload",
-        "infostealer",
-        "malicious file"
-      ],
-      name: "Malware Distribution Signal",
-      code: "THREAT-MAL-001",
-      severity: "critical"
-    },
-
-    {
-      category: "botnets",
-      keywords: [
-        "botnet",
-        "automated accounts",
-        "bot activity",
-        "coordinated accounts",
-        "fake accounts",
-        "automation"
-      ],
-      name: "Automated / Coordinated Activity",
-      code: "THREAT-BOT-001",
-      severity: "high"
-    },
-
-    {
-      category: "disinformation",
-      keywords: [
+        "impersonation",
+        "fake",
+        "spam",
         "disinformation",
-        "misinformation",
-        "fake news",
-        "deepfake",
-        "fabricated",
-        "synthetic media",
-        "manipulated video"
-      ],
-      name: "Potential Coordinated Disinformation",
-      code: "THREAT-DIS-001",
-      severity: "medium"
-    },
+        "malicious",
+        "attack",
+        "campaign"
+    ];
 
-    {
-      category: "radicalization",
-      keywords: [
-        "radicalization",
-        "extremist recruitment",
-        "recruitment propaganda",
-        "violent propaganda",
-        "radical content"
-      ],
-      name: "Potential Radicalization Signal",
-      code: "THREAT-RAD-001",
-      severity: "high"
-    }
-  ];
-
-  let best = null;
-  let highestMatches = 0;
-
-  for (const rule of rules) {
-    let matches = 0;
-
-    for (const keyword of rule.keywords) {
-      if (value.includes(keyword)) {
-        matches++;
-      }
+    for (const term of highRiskTerms) {
+        if (value.includes(term)) score += 9;
     }
 
-    if (matches > highestMatches) {
-      highestMatches = matches;
-      best = rule;
+    for (const term of mediumRiskTerms) {
+        if (value.includes(term)) score += 4;
     }
-  }
 
-  if (!best) {
-    return {
-      category: "informational",
-      name: "General Social Signal",
-      code: "SIGNAL-001",
-      severity: "low"
-    };
-  }
+    if (source === "CISA KEV") score += 20;
+    if (source === "NIST NVD") score += 12;
+    if (source === "FIRST EPSS") score += 10;
 
-  return {
-    category: best.category,
-    name: best.name,
-    code: best.code,
-    severity: best.severity,
-    keyword_matches: highestMatches
-  };
+    return clamp(Math.round(score), 0, 100);
 }
 
-/* ============================================================
-   REDDIT PUBLIC SIGNAL MONITOR
-   ============================================================ */
-
-async function redditSignals() {
-  if (
-    socialCache.value &&
-    Date.now() < socialCache.expiresAt
-  ) {
-    return socialCache.value;
-  }
-
-  const query =
-    "phishing OR scam OR malware OR ransomware OR deepfake OR botnet";
-
-  const url =
-    `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}` +
-    `&sort=new&limit=50&raw_json=1`;
-
-  try {
-    const data = await fetchJson(url);
-
-    const posts =
-      data?.data?.children
-        ?.map(item => item.data)
-        ?.filter(Boolean) || [];
-
-    const records = posts.map(post => {
-      const combinedText =
-        `${post.title || ""} ${post.selftext || ""}`;
-
-      const classification =
-        classifyThreat(combinedText);
-
-      return {
-        id: post.id,
-        platform: "Reddit",
-
-        community:
-          post.subreddit_name_prefixed || null,
-
-        title:
-          post.title || "",
-
-        text_preview:
-          String(post.selftext || "")
-            .replace(/\s+/g, " ")
-            .slice(0, 300),
-
-        url:
-          post.permalink
-            ? `https://www.reddit.com${post.permalink}`
-            : null,
-
-        created_at:
-          post.created_utc
-            ? new Date(
-                post.created_utc * 1000
-              ).toISOString()
-            : null,
-
-        score:
-          Number(post.score || 0),
-
-        comments:
-          Number(post.num_comments || 0),
-
-        classification
-      };
-    });
-
-    const counts = {};
-
-    for (const record of records) {
-      const category =
-        record.classification.category;
-
-      counts[category] =
-        (counts[category] || 0) + 1;
-    }
-
-    const result = {
-      source: "Reddit public JSON search",
-      source_status: "live",
-      query,
-      records,
-      counts,
-      generated_at:
-        new Date().toISOString()
-    };
-
-    socialCache = {
-      value: result,
-      expiresAt:
-        Date.now() + CACHE.social
-    };
-
-    return result;
-  } catch (error) {
-    return {
-      source: "Reddit public JSON search",
-      source_status: "unavailable",
-      query,
-      records: [],
-      counts: {},
-      error: error.message,
-      generated_at:
-        new Date().toISOString()
-    };
-  }
+function riskLabel(score) {
+    if (score >= 80) return "Critical";
+    if (score >= 60) return "High";
+    if (score >= 40) return "Medium";
+    return "Low";
 }
 
-/* ============================================================
-   GOOGLE NEWS THREAT SIGNALS
-   ============================================================ */
+// ------------------------------------------------------------
+// GOOGLE TRENDS
+// ------------------------------------------------------------
 
-async function googleNewsSignals() {
-  if (
-    newsCache.value &&
-    Date.now() < newsCache.expiresAt
-  ) {
-    return newsCache.value;
-  }
+async function fetchGoogleTrends() {
+    const url =
+        "https://trends.google.com/trending/rss?geo=IN";
 
-  const searches = [
-    ["phishing", "phishing OR credential theft"],
-    ["malware", "malware OR ransomware"],
-    ["scams", "online scam OR fraud"],
-    ["deepfake", "deepfake OR synthetic media"],
-    ["social engineering", "social engineering cyber"]
-  ];
-
-  const records = [];
-  const source_status = {};
-
-  for (const [category, query] of searches) {
     try {
-      const url =
-        `https://news.google.com/rss/search?q=${encodeURIComponent(query)}` +
-        `&hl=en-IN&gl=IN&ceid=IN:en`;
+        const xml = await fetchURL(url);
 
-      const rss = await fetchText(url);
+        const items = parseRSS(xml, "Google Trends");
 
-      const items = [
-        ...rss.matchAll(/<item>([\s\S]*?)<\/item>/gi)
-      ]
-        .slice(0, 10)
-        .map(match => {
-          const item = match[1];
+        state.sourceStatus.googleTrends = "live";
 
-          return {
-            category,
-            title: xmlTag(item, "title"),
-            published_at:
-              xmlTag(item, "pubDate"),
-            link:
-              xmlTag(item, "link"),
-            source:
-              "Google News RSS"
-          };
-        })
-        .filter(item => item.title);
-
-      records.push(...items);
-
-      source_status[category] = "live";
+        return items.map((item, index) => ({
+            id: `trend-${index}-${hashString(item.title).slice(0, 10)}`,
+            topic: item.title,
+            title: item.title,
+            source: "Google Trends",
+            link: item.link,
+            published: item.published,
+            category: classifyThreat(item.title)?.category || "general",
+            riskScore: calculateRisk(item.title, "Google Trends"),
+            riskLevel: riskLabel(
+                calculateRisk(item.title, "Google Trends")
+            )
+        }));
     } catch (error) {
-      source_status[category] =
-        "unavailable";
+        console.error(
+            "[Google Trends] unavailable:",
+            error.message
+        );
+
+        state.sourceStatus.googleTrends = "unavailable";
+
+        return [];
     }
-  }
-
-  const counts = {};
-
-  for (const record of records) {
-    counts[record.category] =
-      (counts[record.category] || 0) + 1;
-  }
-
-  const result = {
-    source:
-      "Google News RSS public feeds",
-    source_status,
-    records,
-    counts,
-    generated_at:
-      new Date().toISOString()
-  };
-
-  newsCache = {
-    value: result,
-    expiresAt:
-      Date.now() + CACHE.news
-  };
-
-  return result;
 }
 
-/* ============================================================
-   CISA + NVD + EPSS CYBER INTELLIGENCE
-   ============================================================ */
+// ------------------------------------------------------------
+// GOOGLE NEWS THREAT INTELLIGENCE
+// ------------------------------------------------------------
 
-function fallbackRecords() {
-  return [
-    {
-      cve: "NO-LIVE-CVE",
-      vendor: "Public feeds",
-      product: "Cyber intelligence",
-      name:
-        "No public vulnerability feed is currently reachable.",
-      required_action:
-        "Retry the live sources.",
-      source: "fallback",
-      priority_score: 0,
-      known_exploited: false
+async function fetchGoogleNews() {
+    const queries = [
+        "social media phishing",
+        "social media scam",
+        "social media malware",
+        "social media botnet",
+        "social media disinformation",
+        "cyber attack social media"
+    ];
+
+    const results = [];
+
+    for (const query of queries) {
+        try {
+            const url =
+                "https://news.google.com/rss/search?q=" +
+                encodeURIComponent(query) +
+                "&hl=en-IN&gl=IN&ceid=IN:en";
+
+            const xml = await fetchURL(url);
+
+            const items = parseRSS(
+                xml,
+                "Google News"
+            );
+
+            results.push(...items.slice(0, 10));
+        } catch (error) {
+            console.error(
+                `[Google News] ${query}:`,
+                error.message
+            );
+        }
     }
-  ];
-}
 
-async function publicIntelligence() {
-  if (
-    cyberCache.value &&
-    Date.now() < cyberCache.expiresAt
-  ) {
-    return cyberCache.value;
-  }
-
-  const [cisa, nvd] =
-    await Promise.allSettled([
-      fetchJson(
-        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-      ),
-
-      fetchJson(
-        "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10"
-      )
-    ]);
-
-  const records = [];
-
-  const sources = {
-    cisa_kev:
-      cisa.status === "fulfilled"
-        ? "live"
-        : "unavailable",
-
-    nist_nvd:
-      nvd.status === "fulfilled"
-        ? "live"
-        : "unavailable",
-
-    first_epss: "unavailable"
-  };
-
-  /* ---------------- CISA KEV ---------------- */
-
-  if (cisa.status === "fulfilled") {
-    const vulnerabilities =
-      cisa.value.vulnerabilities || [];
-
-    const latest =
-      vulnerabilities
-        .slice(-10)
-        .reverse();
-
-    for (const row of latest) {
-      records.push({
-        cve: row.cveID,
-        vendor: row.vendorProject,
-        product: row.product,
-        name: row.vulnerabilityName,
-        date_added: row.dateAdded,
-        required_action:
-          row.requiredAction,
-        source: "CISA KEV",
-        threat_status:
-          "Known exploited",
-        known_exploited: true
-      });
+    if (results.length > 0) {
+        state.sourceStatus.googleNews = "live";
+    } else {
+        state.sourceStatus.googleNews = "unavailable";
     }
-  }
 
-  /* ---------------- NIST NVD ---------------- */
+    return results.map((item, index) => {
+        const classification =
+            classifyThreat(
+                `${item.title} ${item.description}`
+            );
 
-  if (nvd.status === "fulfilled") {
-    const vulnerabilities =
-      nvd.value.vulnerabilities || [];
-
-    for (const item of vulnerabilities.slice(0, 10)) {
-      const cve = item.cve;
-
-      const metrics =
-        cve.metrics || {};
-
-      const metric =
-        (
-          metrics.cvssMetricV31 ||
-          metrics.cvssMetricV30 ||
-          metrics.cvssMetricV2 ||
-          []
-        )[0]?.cvssData;
-
-      records.push({
-        cve: cve.id,
-
-        vendor: "NIST NVD",
-
-        product:
-          "Public CVE feed",
-
-        name:
-          cve.descriptions
-            ?.find(x => x.lang === "en")
-            ?.value ||
-          "CVE record",
-
-        date_added:
-          cve.published,
-
-        required_action:
-          "Review affected products and apply vendor guidance.",
-
-        source:
-          "NIST NVD",
-
-        cvss_score:
-          metric?.baseScore ?? null,
-
-        severity:
-          metric?.baseSeverity ||
-          "Not scored",
-
-        known_exploited: false
-      });
-    }
-  }
-
-  /* ---------------- FIRST EPSS ---------------- */
-
-  const cves = [
-    ...new Set(
-      records
-        .map(x => x.cve)
-        .filter(
-          x =>
-            /^CVE-\d{4}-\d+$/i.test(x)
-        )
-    )
-  ];
-
-  let epss = null;
-
-  if (cves.length > 0) {
-    try {
-      epss = await fetchJson(
-        `https://api.first.org/data/v1/epss?cve=${encodeURIComponent(
-          cves.join(",")
-        )}`
-      );
-
-      sources.first_epss = "live";
-    } catch {
-      sources.first_epss =
-        "unavailable";
-    }
-  }
-
-  const probabilities =
-    new Map(
-      (epss?.data || []).map(
-        row => [
-          row.cve,
-          Number(row.epss)
-        ]
-      )
-    );
-
-  /* ---------------- PRIORITY SCORE ---------------- */
-
-  const enriched =
-    (
-      records.length
-        ? records
-        : fallbackRecords()
-    )
-      .map(record => {
-        const ep =
-          probabilities.get(
-            record.cve
-          ) ?? null;
-
-        const cvss =
-          Number(
-            record.cvss_score || 0
-          );
-
-        const known =
-          Boolean(
-            record.known_exploited
-          );
-
-        /*
-         * Known exploited = maximum priority.
-         *
-         * Otherwise:
-         * 70% EPSS
-         * 30% CVSS impact
-         */
-
-        const calculated =
-          known
-            ? 100
-            : Math.round(
-                (
-                  (ep || 0) * 70 +
-                  (cvss / 10) * 30
-                ) * 100
-              );
+        const score = calculateRisk(
+            `${item.title} ${item.description}`,
+            "Google News"
+        );
 
         return {
-          ...record,
+            id: `news-${index}-${hashString(item.title).slice(0, 10)}`,
+            title: item.title,
+            description: item.description,
+            source: "Google News",
+            link: item.link,
+            published: item.published,
 
-          epss_probability: ep,
+            category:
+                classification?.category || "general",
 
-          priority_score:
-            Math.min(
-              100,
-              calculated
-            ),
+            threatType:
+                classification?.name || "Emerging Cyber Signal",
 
-          threat_code:
-            known
-              ? "THREAT-CVE-KEV"
-              : "THREAT-CVE-RISK"
+            threatCode:
+                classification?.code || "SIGNAL-001",
+
+            matchedKeywords:
+                classification?.matchedKeywords || [],
+
+            riskScore: score,
+            riskLevel: riskLabel(score)
         };
-      })
-      .sort(
-        (a, b) =>
-          b.priority_score -
-          a.priority_score
-      );
-
-  const top =
-    enriched[0];
-
-  const result = {
-    records: enriched,
-
-    source_status:
-      sources,
-
-    analysis: {
-      method:
-        "CISA known-exploited status + NIST CVSS impact + FIRST EPSS exploitation probability",
-
-      records_analyzed:
-        enriched.length,
-
-      high_priority_count:
-        enriched.filter(
-          x =>
-            x.priority_score >= 70
-        ).length,
-
-      critical_count:
-        enriched.filter(
-          x =>
-            x.priority_score >= 85 ||
-            x.known_exploited
-        ).length,
-
-      forecast_window:
-        "next 30 days",
-
-      forecast:
-        top?.known_exploited
-          ? `${top.cve} is already known exploited; remediation should be prioritized.`
-          : top?.epss_probability != null
-            ? `${top.cve} has ${(top.epss_probability * 100).toFixed(1)}% EPSS exploitation probability in the next 30 days.`
-            : "No live exploitation probability was available."
-    },
-
-    generated_at:
-      new Date().toISOString()
-  };
-
-  cyberCache = {
-    value: result,
-    expiresAt:
-      Date.now() + CACHE.cyber
-  };
-
-  return result;
+    });
 }
 
-/* ============================================================
-   PREDICTION ENGINE
-   ============================================================ */
+// ------------------------------------------------------------
+// REDDIT PUBLIC INTELLIGENCE
+// ------------------------------------------------------------
 
-function buildPrediction(social, news) {
-  const categories = [
-    "phishing",
-    "scams",
-    "malware",
-    "botnets",
-    "disinformation",
-    "radicalization"
-  ];
+async function fetchRedditSignals() {
+    const queries = [
+        "phishing",
+        "scam",
+        "malware",
+        "botnet",
+        "disinformation"
+    ];
 
-  const socialCounts =
-    social?.counts || {};
+    const results = [];
 
-  const newsCounts =
-    news?.counts || {};
+    for (const query of queries) {
+        try {
+            const url =
+                "https://www.reddit.com/search.json?q=" +
+                encodeURIComponent(query) +
+                "&sort=new&limit=10";
 
-  /*
-   * Only use a previous point if one really exists.
-   * This prevents a fake 100% growth reading
-   * on the very first refresh.
-   */
+            const data = await fetchJSON(url);
 
-  const previous =
-    intelligenceHistory.length >= 2
-      ? intelligenceHistory[
-          intelligenceHistory.length - 2
-        ]
-      : null;
+            const children =
+                data?.data?.children || [];
 
-  const candidates =
-    categories.map(category => {
-      const current =
-        Number(
-          socialCounts[category] || 0
-        );
+            for (const child of children) {
+                const post = child?.data;
 
-      const previousCount =
-        Number(
-          previous
-            ?.social
-            ?.counts
-            ?.[category] || 0
-        );
+                if (!post) continue;
 
-      const newsCount =
-        Number(
-          newsCounts[category] || 0
-        );
-
-      let growth = 0;
-
-      if (previous) {
-        if (previousCount > 0) {
-          growth =
-            (
-              (current -
-                previousCount) /
-              previousCount
-            ) * 100;
-        } else if (current > 0) {
-          growth = 100;
+                results.push({
+                    title: post.title || "",
+                    description:
+                        post.selftext || "",
+                    link:
+                        post.permalink
+                            ? `https://www.reddit.com${post.permalink}`
+                            : "",
+                    published:
+                        post.created_utc
+                            ? new Date(
+                                post.created_utc * 1000
+                            ).toISOString()
+                            : "",
+                    source: "Reddit"
+                });
+            }
+        } catch (error) {
+            console.error(
+                `[Reddit] ${query}:`,
+                error.message
+            );
         }
-      }
+    }
 
-      /*
-       * Explainable weighted prediction.
-       *
-       * Signal volume:
-       *   max 35 points
-       *
-       * Positive velocity:
-       *   max 20 points
-       *
-       * News pressure:
-       *   max 15 points
-       *
-       * Base:
-       *   30 points
-       */
+    if (results.length > 0) {
+        state.sourceStatus.reddit = "live";
+    } else {
+        state.sourceStatus.reddit = "unavailable";
+    }
 
-      const probability =
-        Math.min(
-          95,
-          Math.max(
-            5,
-            Math.round(
-              30 +
-              Math.min(
-                35,
-                current * 7
-              ) +
-              Math.min(
-                20,
-                Math.max(0, growth) / 4
-              ) +
-              Math.min(
-                15,
-                newsCount * 2
-              )
-            )
-          )
-        );
+    return results.map((item, index) => {
+        const text =
+            `${item.title} ${item.description}`;
 
-      return {
-        category,
-        current_signals: current,
-        previous_signals:
-          previousCount,
-        news_signals:
-          newsCount,
-        growth_percent:
-          Math.round(growth),
-        probability
-      };
-    })
-    .sort(
-      (a, b) =>
-        b.probability -
-        a.probability
-    );
+        const classification =
+            classifyThreat(text);
 
-  const top =
-    candidates[0] || {
-      category: "phishing",
-      current_signals: 0,
-      previous_signals: 0,
-      news_signals: 0,
-      growth_percent: 0,
-      probability: 5
-    };
+        const score =
+            calculateRisk(text, "Reddit");
 
-  const names = {
-    phishing: [
-      "Credential-Phishing Campaign",
-      "PRED-PHI-001"
-    ],
+        return {
+            id:
+                `reddit-${index}-${hashString(item.title).slice(0, 10)}`,
 
-    scams: [
-      "Social Engineering / Scam Surge",
-      "PRED-SCM-001"
-    ],
+            title: item.title,
+            description: item.description,
 
-    malware: [
-      "Malware Distribution Surge",
-      "PRED-MAL-001"
-    ],
+            source: "Reddit",
+            link: item.link,
+            published: item.published,
 
-    botnets: [
-      "Automated Coordination Surge",
-      "PRED-BOT-001"
-    ],
+            category:
+                classification?.category || "general",
 
-    disinformation: [
-      "Coordinated Disinformation Signal",
-      "PRED-DIS-001"
-    ],
+            threatType:
+                classification?.name ||
+                "Community Cyber Signal",
 
-    radicalization: [
-      "Potential Radicalization Surge",
-      "PRED-RAD-001"
-    ]
-  };
+            threatCode:
+                classification?.code ||
+                "COMMUNITY-001",
 
-  const [
-    threat,
-    threat_code
-  ] =
-    names[top.category] ||
-    names.phishing;
+            matchedKeywords:
+                classification?.matchedKeywords || [],
 
-  const confidence =
-    top.probability >= 75
-      ? "high"
-      : top.probability >= 55
-        ? "medium"
-        : "low";
-
-  return {
-    threat,
-
-    threat_code,
-
-    category:
-      top.category,
-
-    probability:
-      top.probability,
-
-    confidence,
-
-    current_signals:
-      top.current_signals,
-
-    previous_signals:
-      top.previous_signals,
-
-    news_signals:
-      top.news_signals,
-
-    growth_percent:
-      top.growth_percent,
-
-    forecast_horizon:
-      "next 24–48 hours",
-
-    methodology:
-      "Rolling public signal volume + signal velocity + public threat/news activity",
-
-    evidence: [
-      `${top.current_signals} current social signals`,
-      `${top.news_signals} recent public threat/news signals`,
-      `${top.growth_percent >= 0 ? "+" : ""}${top.growth_percent}% signal change since previous refresh`
-    ],
-
-    disclaimer:
-      "This is an explainable early-warning forecast, not a guarantee of a future event."
-  };
+            riskScore: score,
+            riskLevel: riskLabel(score)
+        };
+    });
 }
 
-/* ============================================================
-   LIVE SNAPSHOT REFRESH
-   ============================================================ */
+// ------------------------------------------------------------
+// CISA KNOWN EXPLOITED VULNERABILITIES
+// ------------------------------------------------------------
 
-async function refreshLiveSnapshot() {
-  try {
-    const [
-      social,
-      news,
-      cyber,
-      trends
-    ] =
-      await Promise.all([
-        redditSignals(),
-        googleNewsSignals(),
-        publicIntelligence(),
-        publicTrends("IN")
-      ]);
+async function fetchCISAKEV() {
+    const url =
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 
-    const snapshot = {
-      timestamp:
-        new Date().toISOString(),
+    try {
+        const data = await fetchJSON(url);
 
-      social: {
-        counts:
-          social.counts || {},
+        const vulnerabilities =
+            data?.vulnerabilities || [];
 
-        total:
-          social.records?.length || 0
-      },
+        state.sourceStatus.cisaKev = "live";
 
-      news: {
-        counts:
-          news.counts || {},
+        return vulnerabilities
+            .slice(-40)
+            .reverse()
+            .map((vuln, index) => ({
+                id:
+                    `cisa-${index}-${hashString(vuln.cveID).slice(0, 10)}`,
 
-        total:
-          news.records?.length || 0
-      },
+                title:
+                    `${vuln.cveID}: ${vuln.vulnerabilityName}`,
 
-      cyber: {
-        high_priority:
-          cyber.records?.filter(
-            x =>
-              x.priority_score >= 70
-          ).length || 0,
+                description:
+                    `${vuln.vendorProject || ""} ${vuln.product || ""}`.trim(),
 
-        critical:
-          cyber.records?.filter(
-            x =>
-              x.priority_score >= 85 ||
-              x.known_exploited
-          ).length || 0
-      },
+                source: "CISA KEV",
 
-      trends: {
-        total:
-          trends.items?.length || 0
-      }
-    };
+                cve:
+                    vuln.cveID,
 
-    intelligenceHistory.push(
-      snapshot
+                category: "malware",
+
+                threatType:
+                    "Known Exploited Vulnerability",
+
+                threatCode:
+                    "CISA-KEV",
+
+                published:
+                    vuln.dateAdded || "",
+
+                dueDate:
+                    vuln.dueDate || "",
+
+                riskScore: 85,
+
+                riskLevel: "Critical"
+            }));
+    } catch (error) {
+        console.error(
+            "[CISA KEV] unavailable:",
+            error.message
+        );
+
+        state.sourceStatus.cisaKev = "unavailable";
+
+        return [];
+    }
+}
+
+// ------------------------------------------------------------
+// NIST NVD
+// ------------------------------------------------------------
+
+async function fetchNVD() {
+    const url =
+        "https://services.nvd.nist.gov/rest/json/cves/2.0" +
+        "?pubStartDate=" +
+        encodeURIComponent(
+            new Date(
+                Date.now() - 7 * 24 * 60 * 60 * 1000
+            ).toISOString()
+        ) +
+        "&resultsPerPage=30";
+
+    try {
+        const data = await fetchJSON(url);
+
+        const vulnerabilities =
+            data?.vulnerabilities || [];
+
+        state.sourceStatus.nvd = "live";
+
+        return vulnerabilities.map((entry, index) => {
+            const cve =
+                entry?.cve || {};
+
+            const id =
+                cve.id || `NVD-${index}`;
+
+            const description =
+                cve.descriptions?.find(
+                    d => d.lang === "en"
+                )?.value || "";
+
+            const score =
+                cve.metrics?.cvssMetricV31?.[0]
+                    ?.cvssData?.baseScore ||
+                cve.metrics?.cvssMetricV30?.[0]
+                    ?.cvssData?.baseScore ||
+                cve.metrics?.cvssMetricV2?.[0]
+                    ?.cvssData?.baseScore ||
+                0;
+
+            return {
+                id:
+                    `nvd-${index}-${hashString(id).slice(0, 10)}`,
+
+                title:
+                    `${id} - Vulnerability Intelligence`,
+
+                description,
+
+                source: "NIST NVD",
+
+                cve: id,
+
+                category: "malware",
+
+                threatType:
+                    "New Vulnerability Signal",
+
+                threatCode:
+                    "NVD-CVE",
+
+                published:
+                    cve.published || "",
+
+                cvss:
+                    safeNumber(score),
+
+                riskScore:
+                    clamp(
+                        Math.round(
+                            safeNumber(score) * 10
+                        ),
+                        0,
+                        100
+                    ),
+
+                riskLevel:
+                    riskLabel(
+                        clamp(
+                            Math.round(
+                                safeNumber(score) * 10
+                            ),
+                            0,
+                            100
+                        )
+                    )
+            };
+        });
+    } catch (error) {
+        console.error(
+            "[NIST NVD] unavailable:",
+            error.message
+        );
+
+        state.sourceStatus.nvd = "unavailable";
+
+        return [];
+    }
+}
+
+// ------------------------------------------------------------
+// FIRST EPSS
+// ------------------------------------------------------------
+
+async function fetchEPSS() {
+    const url =
+        "https://api.first.org/data/v1/epss?limit=30";
+
+    try {
+        const data = await fetchJSON(url);
+
+        const records =
+            data?.data || [];
+
+        state.sourceStatus.epss = "live";
+
+        return records.map((record, index) => {
+            const epss =
+                safeNumber(record.epss);
+
+            const percentile =
+                safeNumber(record.percentile);
+
+            const score =
+                clamp(
+                    Math.round(epss * 100),
+                    0,
+                    100
+                );
+
+            return {
+                id:
+                    `epss-${index}-${hashString(record.cve).slice(0, 10)}`,
+
+                title:
+                    `${record.cve} - Exploitation Probability`,
+
+                description:
+                    `EPSS probability ${(
+                        epss * 100
+                    ).toFixed(2)}%`,
+
+                source: "FIRST EPSS",
+
+                cve:
+                    record.cve,
+
+                category: "malware",
+
+                threatType:
+                    "Exploit Probability Signal",
+
+                threatCode:
+                    "EPSS",
+
+                epss:
+                    epss,
+
+                percentile:
+                    percentile,
+
+                riskScore:
+                    score,
+
+                riskLevel:
+                    riskLabel(score)
+            };
+        });
+    } catch (error) {
+        console.error(
+            "[FIRST EPSS] unavailable:",
+            error.message
+        );
+
+        state.sourceStatus.epss = "unavailable";
+
+        return [];
+    }
+}
+
+// ------------------------------------------------------------
+// THREAT AGGREGATION
+// ------------------------------------------------------------
+
+function deduplicate(items) {
+    const seen = new Set();
+    const result = [];
+
+    for (const item of items) {
+        const key =
+            item.cve ||
+            item.title ||
+            item.id;
+
+        const normalized =
+            String(key)
+                .toLowerCase()
+                .trim();
+
+        if (seen.has(normalized)) continue;
+
+        seen.add(normalized);
+        result.push(item);
+    }
+
+    return result;
+}
+
+// ------------------------------------------------------------
+// PREDICTION ENGINE
+// ------------------------------------------------------------
+
+function buildPrediction() {
+    const current = state.metrics;
+
+    const previous =
+        history.length >= 1
+            ? history[history.length - 1]
+            : null;
+
+    const signals = [];
+
+    const categories = [
+        {
+            category: "phishing",
+            name: "Credential-Phishing Campaign",
+            code: "PRED-PHI-001",
+            current:
+                current.phishingSignals
+        },
+
+        {
+            category: "scams",
+            name: "Social Engineering / Scam Surge",
+            code: "PRED-SCM-001",
+            current:
+                current.scamSignals
+        },
+
+        {
+            category: "malware",
+            name: "Malware Distribution Surge",
+            code: "PRED-MAL-001",
+            current:
+                current.malwareSignals
+        },
+
+        {
+            category: "botnets",
+            name: "Automated Coordination Surge",
+            code: "PRED-BOT-001",
+            current:
+                current.botSignals
+        },
+
+        {
+            category: "disinformation",
+            name: "Coordinated Disinformation Signal",
+            code: "PRED-DIS-001",
+            current:
+                current.disinformationSignals
+        },
+
+        {
+            category: "radicalization",
+            name: "Potential Radicalization Surge",
+            code: "PRED-RAD-001",
+            current:
+                current.radicalizationSignals
+        }
+    ];
+
+    for (const item of categories) {
+        const old =
+            previous?.[item.category] || 0;
+
+        let growth = 0;
+
+        if (old > 0) {
+            growth =
+                ((item.current - old) / old) * 100;
+        } else if (item.current > 0) {
+            // Avoid claiming unrealistic 1000%+ growth
+            // when historical data does not yet exist.
+            growth = 25;
+        }
+
+        growth = clamp(
+            Math.round(growth),
+            -100,
+            200
+        );
+
+        let confidence = 35;
+
+        if (history.length >= 2) {
+            confidence += 15;
+        }
+
+        if (history.length >= 5) {
+            confidence += 20;
+        }
+
+        if (item.current > 3) {
+            confidence += 10;
+        }
+
+        confidence =
+            clamp(confidence, 0, 90);
+
+        let predictionScore =
+            item.current * 10 +
+            Math.max(growth, 0) * 0.35;
+
+        predictionScore =
+            clamp(
+                Math.round(predictionScore),
+                0,
+                100
+            );
+
+        let status = "Stable";
+
+        if (predictionScore >= 70) {
+            status = "High Risk";
+        } else if (predictionScore >= 45) {
+            status = "Watch";
+        }
+
+        signals.push({
+            category: item.category,
+
+            name: item.name,
+
+            code: item.code,
+
+            currentSignals:
+                item.current,
+
+            previousSignals:
+                old,
+
+            growthPercent:
+                growth,
+
+            predictionScore,
+
+            confidence,
+
+            status,
+
+            horizon:
+                "24-48 hours",
+
+            explanation:
+                item.current > 0
+                    ? `Detected ${item.current} active ${item.category} signal(s). Trend momentum is ${growth >= 0 ? "increasing" : "decreasing"} compared with the previous refresh.`
+                    : `No active ${item.category} signals detected in the latest refresh.`
+        });
+    }
+
+    signals.sort(
+        (a, b) =>
+            b.predictionScore -
+            a.predictionScore
     );
 
-    if (
-      intelligenceHistory.length >
-      MAX_HISTORY
-    ) {
-      intelligenceHistory.shift();
+    return {
+        horizon: "24-48 hours",
+
+        generatedAt:
+            nowISO(),
+
+        methodology:
+            "Explainable early-warning scoring based on observed public threat signals, recent signal volume and short-term momentum. Predictions are indicators, not certainty.",
+
+        signals
+    };
+}
+
+// ------------------------------------------------------------
+// METRICS
+// ------------------------------------------------------------
+
+function calculateMetrics() {
+    const threats =
+        state.threats || [];
+
+    const count =
+        category =>
+            threats.filter(
+                t =>
+                    t.category === category
+            ).length;
+
+    state.metrics = {
+        trendSignals:
+            state.trends.length,
+
+        threatSignals:
+            threats.length,
+
+        phishingSignals:
+            count("phishing"),
+
+        scamSignals:
+            count("scams"),
+
+        malwareSignals:
+            count("malware"),
+
+        botSignals:
+            count("botnets"),
+
+        disinformationSignals:
+            count("disinformation"),
+
+        radicalizationSignals:
+            count("radicalization"),
+
+        criticalVulnerabilities:
+            threats.filter(
+                t =>
+                    t.riskLevel ===
+                    "Critical"
+            ).length
+    };
+}
+
+// ------------------------------------------------------------
+// EVIDENCE GENERATION
+// ------------------------------------------------------------
+
+function buildEvidence() {
+    const records = [
+        ...state.trends,
+        ...state.threats
+    ];
+
+    state.evidence =
+        records.slice(0, 100).map(item => ({
+            id:
+                item.id ||
+                hashString(
+                    item.title
+                ),
+
+            source:
+                item.source,
+
+            title:
+                item.title,
+
+            link:
+                item.link || "",
+
+            timestamp:
+                item.published ||
+                state.lastUpdated,
+
+            hash:
+                hashString(
+                    JSON.stringify({
+                        title:
+                            item.title,
+                        source:
+                            item.source,
+                        published:
+                            item.published
+                    })
+                ),
+
+            integrity:
+                "SHA-256"
+        }));
+}
+
+// ------------------------------------------------------------
+// REFRESH INTELLIGENCE
+// ------------------------------------------------------------
+
+async function refreshIntelligence() {
+    console.log(
+        `[LIVE] Refresh started: ${nowISO()}`
+    );
+
+    const [
+        trends,
+        news,
+        reddit,
+        cisa,
+        nvd,
+        epss
+    ] = await Promise.all([
+        fetchGoogleTrends(),
+        fetchGoogleNews(),
+        fetchRedditSignals(),
+        fetchCISAKEV(),
+        fetchNVD(),
+        fetchEPSS()
+    ]);
+
+    state.trends =
+        deduplicate(trends);
+
+    state.threats =
+        deduplicate([
+            ...news,
+            ...reddit,
+            ...cisa,
+            ...nvd,
+            ...epss
+        ])
+            .sort(
+                (a, b) =>
+                    safeNumber(b.riskScore) -
+                    safeNumber(a.riskScore)
+            )
+            .slice(0, 250);
+
+    state.lastUpdated =
+        nowISO();
+
+    calculateMetrics();
+
+    // Store current snapshot for prediction.
+    history.push({
+        timestamp:
+            state.lastUpdated,
+
+        phishing:
+            state.metrics.phishingSignals,
+
+        scams:
+            state.metrics.scamSignals,
+
+        malware:
+            state.metrics.malwareSignals,
+
+        botnets:
+            state.metrics.botSignals,
+
+        disinformation:
+            state.metrics.disinformationSignals,
+
+        radicalization:
+            state.metrics.radicalizationSignals
+    });
+
+    // Keep last 30 refreshes.
+    while (history.length > 30) {
+        history.shift();
     }
+
+    state.prediction =
+        buildPrediction();
+
+    buildEvidence();
 
     console.log(
-      `[LIVE] Refresh completed: ${snapshot.timestamp}`
+        `[LIVE] Refresh completed: ${state.lastUpdated}`
     );
-  } catch (error) {
-    console.error(
-      "[LIVE] Refresh error:",
-      error.message
+
+    console.log(
+        `[LIVE] Trends: ${state.trends.length}`
     );
-  }
+
+    console.log(
+        `[LIVE] Threat signals: ${state.threats.length}`
+    );
+
+    console.log(
+        `[LIVE] Prediction signals: ${state.prediction.signals.length}`
+    );
+
+    console.log(
+        `[LIVE] Sources:`,
+        state.sourceStatus
+    );
+
+    broadcast();
 }
 
-/* ============================================================
-   RISK CALCULATION
-   ============================================================ */
-
-function riskBand(score) {
-  if (score >= 85) return "critical";
-  if (score >= 70) return "high";
-  if (score >= 45) return "medium";
-  return "low";
-}
-
-async function buildSummary(data) {
-  const [
-    cyber,
-    social,
-    news,
-    trends
-  ] =
-    await Promise.all([
-      publicIntelligence(),
-      redditSignals(),
-      googleNewsSignals(),
-      publicTrends("IN")
-    ]);
-
-  const counts =
-    social.counts || {};
-
-  const phishing =
-    counts.phishing || 0;
-
-  const scams =
-    counts.scams || 0;
-
-  const malware =
-    counts.malware || 0;
-
-  const botnets =
-    counts.botnets || 0;
-
-  const disinformation =
-    counts.disinformation || 0;
-
-  const radicalization =
-    counts.radicalization || 0;
-
-  const socialTotal =
-    social.records?.length || 0;
-
-  /*
-   * Social risk is based on observed signal composition.
-   * It is NOT a claim that these posts are confirmed attacks.
-   */
-
-  let socialRisk = 0;
-
-  if (socialTotal > 0) {
-    socialRisk =
-      Math.round(
-        (
-          (phishing /
-            socialTotal) * 45 +
-
-          (scams /
-            socialTotal) * 30 +
-
-          (malware /
-            socialTotal) * 35 +
-
-          (botnets /
-            socialTotal) * 25 +
-
-          (disinformation /
-            socialTotal) * 15 +
-
-          (radicalization /
-            socialTotal) * 20
-        )
-      );
-  }
-
-  socialRisk =
-    Math.min(
-      100,
-      socialRisk
-    );
-
-  const cyberTop =
-    cyber.records?.[0]
-      ?.priority_score || 0;
-
-  const newsPressure =
-    Math.min(
-      100,
-
-      (news.counts?.phishing || 0) * 3 +
-
-      (news.counts?.malware || 0) * 3 +
-
-      (news.counts?.scams || 0) * 2 +
-
-      (news.counts?.deepfake || 0) * 2
-    );
-
-  const combinedRisk =
-    Math.min(
-      100,
-
-      Math.round(
-        Math.max(
-          cyberTop,
-          socialRisk +
-            newsPressure * 0.15
-        )
-      )
-    );
-
-  const previous =
-    intelligenceHistory.length >= 2
-      ? intelligenceHistory[
-          intelligenceHistory.length - 2
-        ]
-      : null;
-
-  const previousTotal =
-    previous?.social?.total || 0;
-
-  const signalVelocity =
-    previousTotal > 0
-      ? Math.round(
-          (
-            (socialTotal -
-              previousTotal) /
-            previousTotal
-          ) * 100
-        )
-      : 0;
-
-  const threat_counts = {
-    phishing,
-    scams,
-    malware,
-    botnets,
-    disinformation,
-    radicalization
-  };
-
-  const totalSignals =
-    Object.values(
-      threat_counts
-    ).reduce(
-      (a, b) => a + b,
-      0
-    );
-
-  const prediction =
-    buildPrediction(
-      social,
-      news
-    );
-
-  return {
-    filters: data,
-
-    data_mode:
-      "live_public_intelligence",
-
-    risk_score:
-      combinedRisk,
-
-    severity:
-      riskBand(combinedRisk),
-
-    overall_threats:
-      totalSignals +
-      (
-        cyber.records?.filter(
-          x =>
-            x.priority_score >= 70
-        ).length || 0
-      ),
-
-    critical_threats:
-      cyber.records?.filter(
-        x =>
-          x.priority_score >= 85 ||
-          x.known_exploited
-      ).length || 0,
-
-    coordinated_clusters:
-      botnets,
-
-    phishing_signals:
-      phishing,
-
-    bot_coordination:
-      botnets,
-
-    threat_counts,
-
-    trend_count:
-      trends.items?.length || 0,
-
-    news_signals:
-      news.records?.length || 0,
-
-    signal_velocity_percent:
-      signalVelocity,
-
-    predicted_threat:
-      prediction.threat,
-
-    predicted_threat_code:
-      prediction.threat_code,
-
-    predicted_probability:
-      prediction.probability,
-
-    prediction_confidence:
-      prediction.confidence,
-
-    sources: {
-      social:
-        social.source_status,
-
-      news:
-        news.source_status,
-
-      cyber:
-        cyber.source_status,
-
-      trends:
-        trends.source_status
-    },
-
-    generated_at:
-      new Date().toISOString()
-  };
-}
-
-/* ============================================================
-   PREDICTION API
-   ============================================================ */
-
-async function predictions() {
-  const [
-    social,
-    news
-  ] =
-    await Promise.all([
-      redditSignals(),
-      googleNewsSignals()
-    ]);
-
-  return {
-    forecast_horizon:
-      "next 24–48 hours",
-
-    prediction:
-      buildPrediction(
-        social,
-        news
-      ),
-
-    history_points:
-      intelligenceHistory.length,
-
-    generated_at:
-      new Date().toISOString()
-  };
-}
-
-/* ============================================================
-   REQUEST BODY
-   ============================================================ */
-
-function readBody(req) {
-  return new Promise(
-    (resolve, reject) => {
-      let data = "";
-
-      req.on(
-        "data",
-        chunk => {
-          data += chunk;
-
-          if (
-            data.length >
-            30000
-          ) {
-            req.destroy();
-          }
-        }
-      );
-
-      req.on(
-        "end",
-        () => {
-          try {
-            resolve(
-              JSON.parse(
-                data || "{}"
-              )
-            );
-          } catch {
-            reject(
-              new Error(
-                "Invalid JSON"
-              )
-            );
-          }
-        }
-      );
-
-      req.on(
-        "error",
-        reject
-      );
-    }
-  );
-}
-
-/* ============================================================
-   HTTP SERVER
-   ============================================================ */
-
-const server =
-  http.createServer(
-    async (req, res) => {
-      try {
-        const url =
-          new URL(
-            req.url,
-            `http://${req.headers.host}`
-          );
-
-        /* ---------------- OPTIONS ---------------- */
-
-        if (
-          req.method ===
-          "OPTIONS"
-        ) {
-          return send(
-            res,
-            204,
-            "",
-            "text/plain"
-          );
-        }
-
-        /* ---------------- HEALTH ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/health"
-        ) {
-          return send(
-            res,
-            200,
-            {
-              status: "ok",
-
-              service:
-                "social-sync-api",
-
-              mode:
-                "live-public-intelligence",
-
-              timestamp:
-                new Date().toISOString()
-            }
-          );
-        }
-
-        /* ---------------- TRENDS ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/trends"
-        ) {
-          const geo =
-            (
-              url.searchParams.get(
-                "geo"
-              ) || "IN"
-            ).toUpperCase();
-
-          if (
-            !/^[A-Z]{2}$/.test(
-              geo
-            )
-          ) {
-            return send(
-              res,
-              400,
-              {
-                error:
-                  "geo must be a two-letter country code."
-              }
-            );
-          }
-
-          return send(
-            res,
-            200,
-            await publicTrends(
-              geo
-            )
-          );
-        }
-
-        /* ---------------- SOCIAL SIGNALS ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/social/signals"
-        ) {
-          return send(
-            res,
-            200,
-            await redditSignals()
-          );
-        }
-
-        /* ---------------- THREAT SUMMARY ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/threats/summary"
-        ) {
-          const data =
-            filters(url);
-
-          if (!data) {
-            return send(
-              res,
-              400,
-              {
-                error:
-                  "Invalid dashboard filter."
-              }
-            );
-          }
-
-          return send(
-            res,
-            200,
-            await buildSummary(
-              data
-            )
-          );
-        }
-
-        /* ---------------- THREAT FEED ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/threats/feed"
-        ) {
-          const data =
-            filters(url);
-
-          if (!data) {
-            return send(
-              res,
-              400,
-              {
-                error:
-                  "Invalid dashboard filter."
-              }
-            );
-          }
-
-          const [
-            cyber,
-            social,
-            news,
-            prediction
-          ] =
-            await Promise.all([
-              publicIntelligence(),
-              redditSignals(),
-              googleNewsSignals(),
-              predictions()
-            ]);
-
-          return send(
-            res,
-            200,
-            {
-              filters: data,
-
-              source:
-                "CISA KEV + NIST NVD + FIRST EPSS + Reddit + Google News RSS",
-
-              source_status: {
-                cyber:
-                  cyber.source_status,
-
-                social:
-                  social.source_status,
-
-                news:
-                  news.source_status
-              },
-
-              cyber_analysis:
-                cyber.analysis,
-
-              named_social_threats:
-                social.records.filter(
-                  record =>
-                    record
-                      .classification
-                      .category !==
-                    "informational"
-                ),
-
-              cyber_records:
-                cyber.records,
-
-              recent_threat_news:
-                news.records,
-
-              prediction:
-                prediction.prediction,
-
-              generated_at:
-                new Date().toISOString()
-            }
-          );
-        }
-
-        /* ---------------- PREDICTIONS ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/predictions"
-        ) {
-          return send(
-            res,
-            200,
-            await predictions()
-          );
-        }
-
-        /* ---------------- LIVE SSE STREAM ---------------- */
-
-        if (
-          req.method === "GET" &&
-          url.pathname ===
-            "/api/stream"
-        ) {
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "text/event-stream; charset=utf-8",
-
-              "Cache-Control":
-                "no-cache",
-
-              Connection:
-                "keep-alive",
-
-              "Access-Control-Allow-Origin":
-                "*"
-            }
-          );
-
-          const push =
-            async () => {
-              try {
-                const [
-                  summary,
-                  prediction
-                ] =
-                  await Promise.all([
-                    buildSummary({
-                      app: "all",
-                      category: "all",
-                      audience: "all"
-                    }),
-
-                    predictions()
-                  ]);
-
-                res.write(
-                  `data: ${JSON.stringify({
-                    summary,
-                    prediction,
-                    generated_at:
-                      new Date().toISOString()
-                  })}\n\n`
-                );
-              } catch (error) {
-                res.write(
-                  `data: ${JSON.stringify({
-                    error:
-                      error.message
-                  })}\n\n`
-                );
-              }
-            };
-
-          await push();
-
-          const timer =
-            setInterval(
-              push,
-              REFRESH_INTERVAL
-            );
-
-          req.on(
-            "close",
-            () => {
-              clearInterval(
-                timer
-              );
-            }
-          );
-
-          return;
-        }
-
-        /* ---------------- EVIDENCE ---------------- */
-
-        if (
-          req.method === "POST" &&
-          url.pathname ===
-            "/api/evidence"
-        ) {
-          try {
-            const body =
-              await readBody(
-                req
-              );
-
-            const content =
-              String(
-                body.content ||
-                  ""
-              ).trim();
-
-            if (
-              !content ||
-              content.length >
-                20000
-            ) {
-              return send(
-                res,
-                400,
-                {
-                  error:
-                    "JSON body must include 'content' up to 20,000 characters."
-                }
-              );
-            }
-
-            const canonical =
-              JSON.stringify({
-                content,
-
-                source:
-                  body.source ||
-                  "unknown"
-              });
-
-            const record = {
-              evidence_id:
-                `SIH-${crypto
-                  .randomUUID()
-                  .replaceAll(
-                    "-",
-                    ""
-                  )
-                  .slice(
-                    0,
-                    12
-                  )
-                  .toUpperCase()}`,
-
-              sha256:
-                crypto
-                  .createHash(
-                    "sha256"
-                  )
-                  .update(
-                    canonical
-                  )
-                  .digest(
-                    "hex"
-                  ),
-
-              source:
+// ------------------------------------------------------------
+// FILTERING
+// ------------------------------------------------------------
+
+function filterItems(items, params) {
+    let result = [...items];
+
+    const app =
+        String(
+            params.get("app") ||
+            "all"
+        ).toLowerCase();
+
+    const category =
+        String(
+            params.get("category") ||
+            "all"
+        ).toLowerCase();
+
+    const audience =
+        String(
+            params.get("audience") ||
+            "all"
+        ).toLowerCase();
+
+    if (
+        app !== "all" &&
+        SUPPORTED_APPS.includes(app)
+    ) {
+        result =
+            result.filter(item =>
                 String(
-                  body.source ||
-                    "unknown"
-                ),
-
-              created_at:
-                new Date().toISOString(),
-
-              integrity_status:
-                "verified"
-            };
-
-            evidence.set(
-              record.evidence_id,
-              record
+                    `${item.title} ${item.description}`
+                )
+                    .toLowerCase()
+                    .includes(app)
             );
+    }
 
-            return send(
-              res,
-              201,
-              record
+    if (
+        category !== "all" &&
+        THREAT_CATEGORIES.includes(category)
+    ) {
+        result =
+            result.filter(
+                item =>
+                    item.category ===
+                    category
             );
-          } catch {
-            return send(
-              res,
-              400,
-              {
-                error:
-                  "Request body must be valid JSON."
-              }
+    }
+
+    // Audience filtering is intentionally
+    // keyword-based because public feeds do not
+    // provide platform audience metadata.
+    if (
+        audience !== "all" &&
+        AUDIENCES.includes(audience)
+    ) {
+        result =
+            result.filter(item =>
+                String(
+                    `${item.title} ${item.description}`
+                )
+                    .toLowerCase()
+                    .includes(
+                        audience
+                            .replace(
+                                "localbusiness",
+                                "business"
+                            )
+                    )
             );
-          }
+    }
+
+    return result;
+}
+
+// ------------------------------------------------------------
+// JSON RESPONSE
+// ------------------------------------------------------------
+
+function sendJSON(res, data, statusCode = 200) {
+    const body =
+        JSON.stringify(
+            data
+        );
+
+    res.writeHead(
+        statusCode,
+        {
+            "Content-Type":
+                "application/json; charset=utf-8",
+
+            "Cache-Control":
+                "no-store",
+
+            "Access-Control-Allow-Origin":
+                "*"
         }
+    );
 
-        /* ---------------- GET EVIDENCE ---------------- */
+    res.end(body);
+}
 
-        if (
-          req.method === "GET" &&
-          url.pathname.startsWith(
-            "/api/evidence/"
-          )
-        ) {
-          const id =
-            decodeURIComponent(
-              url.pathname
-                .split("/")
-                .pop()
-            );
+// ------------------------------------------------------------
+// STATIC FILE SERVER
+// ------------------------------------------------------------
 
-          const record =
-            evidence.get(id);
+const MIME_TYPES = {
+    ".html":
+        "text/html; charset=utf-8",
 
-          return record
-            ? send(
-                res,
+    ".js":
+        "application/javascript; charset=utf-8",
+
+    ".css":
+        "text/css; charset=utf-8",
+
+    ".json":
+        "application/json; charset=utf-8",
+
+    ".png":
+        "image/png",
+
+    ".jpg":
+        "image/jpeg",
+
+    ".jpeg":
+        "image/jpeg",
+
+    ".svg":
+        "image/svg+xml",
+
+    ".ico":
+        "image/x-icon",
+
+    ".webp":
+        "image/webp",
+
+    ".woff":
+        "font/woff",
+
+    ".woff2":
+        "font/woff2",
+
+    ".ttf":
+        "font/ttf"
+};
+
+function serveFile(res, filePath) {
+    fs.stat(
+        filePath,
+        (error, stats) => {
+            if (error || !stats.isFile()) {
+                sendNotFound(res);
+                return;
+            }
+
+            const ext =
+                path.extname(
+                    filePath
+                ).toLowerCase();
+
+            const contentType =
+                MIME_TYPES[ext] ||
+                "application/octet-stream";
+
+            res.writeHead(
                 200,
-                record
-              )
-            : send(
-                res,
-                404,
                 {
-                  error:
-                    "Evidence record not found."
+                    "Content-Type":
+                        contentType,
+
+                    "Cache-Control":
+                        "no-cache"
                 }
-              );
+            );
+
+            fs.createReadStream(
+                filePath
+            ).pipe(res);
         }
+    );
+}
 
-        /* ====================================================
-           EXISTING FRONTEND — UNCHANGED
-           ==================================================== */
+function sendNotFound(res) {
+    res.writeHead(
+        404,
+        {
+            "Content-Type":
+                "text/plain; charset=utf-8"
+        }
+    );
 
-        const requested =
-          url.pathname === "/"
-            ? "index.html"
-            : url.pathname.replace(
+    res.end("Not Found");
+}
+
+// ------------------------------------------------------------
+// STATIC ROUTING
+// ------------------------------------------------------------
+
+function handleStaticRequest(
+    req,
+    res,
+    pathname
+) {
+    // ROOT PAGE
+    // This is the important fix for your current
+    // Railway "Not Found" problem.
+    if (
+        pathname === "/" ||
+        pathname === ""
+    ) {
+        serveFile(
+            res,
+            INDEX_FILE
+        );
+
+        return true;
+    }
+
+    // Direct access to index.html
+    if (
+        pathname === "/index.html"
+    ) {
+        serveFile(
+            res,
+            INDEX_FILE
+        );
+
+        return true;
+    }
+
+    // Static assets:
+    // /static/app.js
+    // /static/style.css
+    // etc.
+    if (
+        pathname.startsWith(
+            "/static/"
+        )
+    ) {
+        const relativePath =
+            pathname.replace(
                 /^\/static\//,
                 ""
-              );
+            );
 
-        const file =
-          path.resolve(
-            STATIC_DIR,
-            requested
-          );
+        const safePath =
+            path.normalize(
+                relativePath
+            );
 
+        // Prevent path traversal.
         if (
-          !file.startsWith(
-            STATIC_DIR
-          ) ||
-          !fs.existsSync(file) ||
-          fs.statSync(file)
-            .isDirectory()
+            safePath.startsWith(
+                ".."
+            ) ||
+            path.isAbsolute(
+                safePath
+            )
         ) {
-          return send(
+            sendNotFound(res);
+            return true;
+        }
+
+        const filePath =
+            path.join(
+                STATIC_DIR,
+                safePath
+            );
+
+        serveFile(
             res,
-            404,
-            "Not found",
-            "text/plain"
-          );
-        }
+            filePath
+        );
 
-        const ext =
-          path.extname(
-            file
-          ).toLowerCase();
+        return true;
+    }
 
-        let type =
-          "text/html";
+    // Also support frontend assets that may
+    // currently be referenced directly.
+    const directRelative =
+        pathname.replace(
+            /^\/+/,
+            ""
+        );
+
+    if (
+        directRelative &&
+        !directRelative.includes("..")
+    ) {
+        const directFile =
+            path.join(
+                ROOT_DIR,
+                directRelative
+            );
 
         if (
-          ext === ".js"
+            fs.existsSync(
+                directFile
+            )
         ) {
-          type =
-            "application/javascript";
-        } else if (
-          ext === ".css"
-        ) {
-          type =
-            "text/css";
-        } else if (
-          ext === ".json"
-        ) {
-          type =
-            "application/json";
-        } else if (
-          ext === ".svg"
-        ) {
-          type =
-            "image/svg+xml";
+            serveFile(
+                res,
+                directFile
+            );
+
+            return true;
         }
-
-        return send(
-          res,
-          200,
-          fs.readFileSync(
-            file
-          ),
-          type
-        );
-      } catch (error) {
-        console.error(
-          "[SERVER ERROR]",
-          error
-        );
-
-        return send(
-          res,
-          500,
-          {
-            error:
-              "Internal server error.",
-            message:
-              error.message
-          }
-        );
-      }
     }
-  );
 
-/* ============================================================
-   START LIVE BACKGROUND REFRESH
-   ============================================================ */
-
-refreshLiveSnapshot();
-
-const refreshTimer =
-  setInterval(
-    refreshLiveSnapshot,
-    REFRESH_INTERVAL
-  );
-
-if (
-  refreshTimer.unref
-) {
-  refreshTimer.unref();
+    return false;
 }
 
-/* ============================================================
-   START SERVER
-   ============================================================ */
+// ------------------------------------------------------------
+// SERVER
+// ------------------------------------------------------------
+
+const server =
+    http.createServer(
+        async (req, res) => {
+            try {
+                const parsed =
+                    new URL(
+                        req.url,
+                        `http://${req.headers.host || "localhost"}`
+                    );
+
+                const pathname =
+                    parsed.pathname;
+
+                const params =
+                    parsed.searchParams;
+
+                // ------------------------------------------------
+                // CORS
+                // ------------------------------------------------
+
+                res.setHeader(
+                    "Access-Control-Allow-Origin",
+                    "*"
+                );
+
+                res.setHeader(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type"
+                );
+
+                if (
+                    req.method === "OPTIONS"
+                ) {
+                    res.writeHead(
+                        204
+                    );
+
+                    res.end();
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // HEALTH
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/health"
+                ) {
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            service:
+                                "social-sync-api",
+
+                            mode:
+                                "live-public-intelligence",
+
+                            timestamp:
+                                nowISO(),
+
+                            lastUpdated:
+                                state.lastUpdated,
+
+                            sources:
+                                state.sourceStatus
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // THREAT SUMMARY
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/threats/summary"
+                ) {
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            generatedAt:
+                                state.lastUpdated,
+
+                            metrics:
+                                state.metrics,
+
+                            prediction:
+                                state.prediction,
+
+                            sources:
+                                state.sourceStatus
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // THREAT FEED
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/threats/feed"
+                ) {
+                    const limit =
+                        clamp(
+                            parseInt(
+                                params.get(
+                                    "limit"
+                                ) || "50",
+                                10
+                            ),
+                            1,
+                            250
+                        );
+
+                    const filtered =
+                        filterItems(
+                            state.threats,
+                            params
+                        );
+
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            generatedAt:
+                                state.lastUpdated,
+
+                            total:
+                                filtered.length,
+
+                            filters: {
+                                app:
+                                    params.get(
+                                        "app"
+                                    ) || "all",
+
+                                category:
+                                    params.get(
+                                        "category"
+                                    ) || "all",
+
+                                audience:
+                                    params.get(
+                                        "audience"
+                                    ) || "all"
+                            },
+
+                            threats:
+                                filtered.slice(
+                                    0,
+                                    limit
+                                )
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // TRENDS
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/trends"
+                ) {
+                    const limit =
+                        clamp(
+                            parseInt(
+                                params.get(
+                                    "limit"
+                                ) || "50",
+                                10
+                            ),
+                            1,
+                            100
+                        );
+
+                    const filtered =
+                        filterItems(
+                            state.trends,
+                            params
+                        );
+
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            generatedAt:
+                                state.lastUpdated,
+
+                            total:
+                                filtered.length,
+
+                            trends:
+                                filtered.slice(
+                                    0,
+                                    limit
+                                )
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // EVIDENCE
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/evidence"
+                ) {
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            generatedAt:
+                                state.lastUpdated,
+
+                            integrity:
+                                "SHA-256",
+
+                            evidence:
+                                state.evidence
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // PREDICTION
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/prediction"
+                ) {
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            prediction:
+                                state.prediction
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // RAW SOURCE STATUS
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/sources"
+                ) {
+                    sendJSON(
+                        res,
+                        {
+                            status: "ok",
+
+                            sources:
+                                state.sourceStatus,
+
+                            updatedAt:
+                                state.lastUpdated
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // SERVER-SENT EVENTS
+                // ------------------------------------------------
+
+                if (
+                    pathname ===
+                    "/api/stream"
+                ) {
+                    res.writeHead(
+                        200,
+                        {
+                            "Content-Type":
+                                "text/event-stream",
+
+                            "Cache-Control":
+                                "no-cache",
+
+                            Connection:
+                                "keep-alive",
+
+                            "Access-Control-Allow-Origin":
+                                "*"
+                        }
+                    );
+
+                    const client = {
+                        res
+                    };
+
+                    clients.add(
+                        client
+                    );
+
+                    res.write(
+                        `data: ${JSON.stringify({
+                            type: "connected",
+                            timestamp: nowISO()
+                        })}\n\n`
+                    );
+
+                    req.on(
+                        "close",
+                        () => {
+                            clients.delete(
+                                client
+                            );
+                        }
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // STATIC FRONTEND
+                // ------------------------------------------------
+
+                if (
+                    handleStaticRequest(
+                        req,
+                        res,
+                        pathname
+                    )
+                ) {
+                    return;
+                }
+
+                // ------------------------------------------------
+                // 404
+                // ------------------------------------------------
+
+                sendNotFound(res);
+            } catch (error) {
+                console.error(
+                    "[SERVER ERROR]",
+                    error
+                );
+
+                sendJSON(
+                    res,
+                    {
+                        status: "error",
+                        message:
+                            "Internal server error"
+                    },
+                    500
+                );
+            }
+        }
+    );
+
+// ------------------------------------------------------------
+// SSE BROADCAST
+// ------------------------------------------------------------
+
+function broadcast() {
+    const payload =
+        JSON.stringify({
+            type:
+                "intelligence-update",
+
+            timestamp:
+                state.lastUpdated,
+
+            metrics:
+                state.metrics,
+
+            prediction:
+                state.prediction,
+
+            sourceStatus:
+                state.sourceStatus
+        });
+
+    for (const client of clients) {
+        try {
+            client.res.write(
+                `data: ${payload}\n\n`
+            );
+        } catch {
+            clients.delete(
+                client
+            );
+        }
+    }
+}
+
+// ------------------------------------------------------------
+// PERIODIC REFRESH
+// ------------------------------------------------------------
+
+setInterval(
+    () => {
+        refreshIntelligence()
+            .catch(error => {
+                console.error(
+                    "[REFRESH ERROR]",
+                    error.message
+                );
+            });
+    },
+    REFRESH_INTERVAL
+);
+
+// ------------------------------------------------------------
+// START SERVER
+// ------------------------------------------------------------
 
 server.listen(
-  PORT,
-  HOST,
-  () => {
-    console.log(
-      "=========================================="
-    );
+    PORT,
+    HOST,
+    () => {
+        console.log("");
+        console.log(
+            "=============================================="
+        );
+        console.log(
+            "      SOCIAL SYNC - LIVE INTELLIGENCE"
+        );
+        console.log(
+            "=============================================="
+        );
 
-    console.log(
-      " Social Sync — Live Intelligence Backend"
-    );
+        console.log(
+            `[SERVER] http://${HOST}:${PORT}`
+        );
 
-    console.log(
-      "=========================================="
-    );
+        console.log(
+            `[FRONTEND] ${INDEX_FILE}`
+        );
 
-    console.log(
-      `Server: http://${HOST}:${PORT}`
-    );
+        console.log(
+            `[STATIC] ${STATIC_DIR}`
+        );
 
-    console.log(
-      "Live refresh: every 2 minutes"
-    );
+        console.log(
+            "[LIVE] Refresh: every 2 minutes"
+        );
 
-    console.log(
-      "Sources: Google Trends, Google News, Reddit"
-    );
+        console.log(
+            "[LIVE] Sources: Google Trends, Google News, Reddit"
+        );
 
-    console.log(
-      "Cyber: CISA KEV, NIST NVD, FIRST EPSS"
-    );
+        console.log(
+            "[CYBER] CISA KEV, NIST NVD, FIRST EPSS"
+        );
 
-    console.log(
-      "Frontend: existing static folder"
-    );
+        console.log(
+            "[PREDICTION] 24-48 hour explainable early warning"
+        );
 
-    console.log(
-      "=========================================="
-    );
+        console.log(
+            "[SECURITY] SHA-256 evidence integrity"
+        );
 
-    /*
-     * Only open browser during local execution.
-     * Railway/cloud deployments have PORT set.
-     */
-    if (
-      !process.env.PORT
-    ) {
-      exec(
-        `start "Social Sync" http://localhost:${PORT}`
-      );
+        console.log(
+            "=============================================="
+        );
+
+        // Initial refresh.
+        refreshIntelligence()
+            .catch(error => {
+                console.error(
+                    "[INITIAL REFRESH ERROR]",
+                    error.message
+                );
+            });
     }
-  }
+);
+
+// ------------------------------------------------------------
+// GRACEFUL SHUTDOWN
+// ------------------------------------------------------------
+
+function shutdown(signal) {
+    console.log(
+        `[SERVER] ${signal} received. Shutting down...`
+    );
+
+    for (const client of clients) {
+        try {
+            client.res.end();
+        } catch {}
+    }
+
+    clients.clear();
+
+    server.close(
+        () => {
+            process.exit(0);
+        }
+    );
+}
+
+process.on(
+    "SIGTERM",
+    () => shutdown("SIGTERM")
+);
+
+process.on(
+    "SIGINT",
+    () => shutdown("SIGINT")
 );
